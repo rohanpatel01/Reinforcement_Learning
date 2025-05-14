@@ -30,7 +30,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import numpy as np
+from tqdm import tqdm
 
 
 SEED = 42
@@ -41,27 +41,50 @@ epsilon = 0.1
 TIME_STEPS = 10_000
 # np.random.seed(SEED)
 
-# True q*(a) values (Will use this to compute the rewards)
-q = np.array([0 for _ in range(k)]) 
+q = None
+Q = None
+N = None
+R = None
+R_average = None
+num_optimal_actions = None
 
-# Running value for incremental value for all actions
-Q = np.array([None] * 2)
-Q[0] = np.array([0 for _ in range(k)]) # Estimated Q for method 1
-Q[1] = np.array([0 for _ in range(k)]) # Estimated Q for method 2
-
-# Number of times we've seen action thus far
-N = np.array([None] * 2)
-N[0] = np.array([0 for _ in range(k)])
-N[1] = np.array([0 for _ in range(k)])
-
-# Variables we document for plotting
-R = np.array([None] * 2)
-R[0] = np.array([0 for _ in range(TIME_STEPS)])
-R[1] = np.array([0 for _ in range(TIME_STEPS)])
-
+R_average = np.array([None] * 2)
+R_average[0] = np.array([0 for _ in range(TIME_STEPS)])
+R_average[1] = np.array([0 for _ in range(TIME_STEPS)])
 
 num_optimal_actions = np.array([0] * 2)
 
+
+# num_optimal_actions = np.array([0] * 2)
+
+def initialize_bandit_problem():
+
+    global q 
+    global Q
+    global N 
+    global R 
+    global R_average
+    global num_optimal_actions
+
+    # True q*(a) values (Will use this to compute the rewards)
+    q = np.array([1 for _ in range(k)]) 
+
+    # Running value for incremental value for all actions
+    Q = np.array([None] * 2)
+    Q[0] = np.array([0 for _ in range(k)]) # Estimated Q for method 1
+    Q[1] = np.array([0 for _ in range(k)]) # Estimated Q for method 2
+
+    # Number of times we've seen action thus far
+    N = np.array([None] * 2)
+    N[0] = np.array([0 for _ in range(k)])
+    N[1] = np.array([0 for _ in range(k)])
+
+    # Variables we document for plotting
+    R = np.array([None] * 2)
+    R[0] = np.array([0 for _ in range(TIME_STEPS)])
+    R[1] = np.array([0 for _ in range(TIME_STEPS)])
+
+    
 
 
 '''
@@ -88,9 +111,9 @@ Reward from the 10-armed testbed Rt is selected from
         variance 1
     
 """
-def reward(action):
+def reward(action_index):
 
-    reward_mean = q[action]
+    reward_mean = q[action_index]
     variance = 1
     stdv = np.sqrt(variance)
     return np.random.normal(reward_mean, stdv)
@@ -112,27 +135,35 @@ def randomWalk(mean, standard_deviation):
     random_walk = np.random.normal(mean, standard_deviation, len(q))
     q = q + random_walk
 
+# Perform modified 10 armed bandit testbed
+NUM_RUNS = 100
+for i in tqdm(range(NUM_RUNS), desc = "Runs", unit="run"):
 
-for t in range(TIME_STEPS):
+    initialize_bandit_problem()
 
-    # Method 1: sample average
-    A_1 = e_greedy(epsilon, Q[0])
-    R_1 = reward(A_1)
-    N[0][A_1] += 1
-    Q[0][A_1] = Q[0][A_1] + ((1/N[0][A_1])*(R_1 - Q[0][A_1]))
+    for t in range(TIME_STEPS):
 
-    # Shift true value distribution
-    randomWalk(RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
+        # Method 1: sample average
+        A_1 = e_greedy(epsilon, Q[0])
+        R_1 = reward(A_1)
+        N[0][A_1] += 1
+        Q[0][A_1] = Q[0][A_1] + ((1/N[0][A_1])*(R_1 - Q[0][A_1]))
 
-    # Document reward for plotting
-    R[0][t] = R_1
-    num_optimal_actions[0] += 1 if isOptimalAction(A_1) else 0
+        # Shift true value distribution
+        randomWalk(RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
 
+        # Document reward for plotting
+        R[0][t] = R_1
+        R_average[0][t] += R_1
+        # num_optimal_actions[0] += 1 if isOptimalAction(A_1) else 0
+
+        
+
+        # Method 2: constant step size
+        # TODO
     
-
-    # Method 2: constant step size
-    # TODO
-
+    # Average results of run
+R_average /= NUM_RUNS
 
 ### Plot results
 sns.set_theme(style="whitegrid")
@@ -142,16 +173,15 @@ sns.set_theme(style="whitegrid")
 
 x_axis = [n for n in range(TIME_STEPS)]
 
-R_dataframe = pd.DataFrame({
-    'Steps': np.concatenate([x_axis, x_axis]),
-    'Reward': np.concatenate([R[0], R[1]]),
-    'Methods': np.concatenate([['Method 1'] * len(x_axis),
-                            ['Method 2'] * len(x_axis),   ])
+df = pd.DataFrame({
+    'Steps': np.concatenate([x_axis]),          # , x_axis
+    'Reward': R_average[0],                    # [ R[0], R[1] ]
+    'Methods': np.concatenate([['Method 1'] * len(x_axis), ])   # ['Method 2'] * len(x_axis),       
 })
 
 # Create the scatter plot using Seaborn
 plt.figure(figsize=(12, 6))
-sns.scatterplot(x='Steps', y='Reward', hue='Methods', data=R_dataframe, s=5, alpha=0.6)
+sns.scatterplot(x='Steps', y='Reward', hue='Methods', data=df, s=5, alpha=0.6)
 
 plt.xlabel("Index")
 plt.ylabel("Value")
