@@ -38,36 +38,32 @@ RANDOM_WALK_MEAN = 0
 RANDOM_WALK_STANDARD_DEVIATION = 0.01
 k = 10  # 10 Actions are: 0 1 2 3 4 5 6 7 8 9
 epsilon = 0.1
-TIME_STEPS = 10_000
+alpha = 0.1     # constant step size parameter for method 2
+TIME_STEPS = 1000
 # np.random.seed(SEED)
 
 q = None
 Q = None
 N = None
-R = None
+# R = None
 R_average = None
 num_optimal_actions = None
 
 R_average = np.array([None] * 2)
-R_average[0] = np.array([0 for _ in range(TIME_STEPS)])
-R_average[1] = np.array([0 for _ in range(TIME_STEPS)])
+R_average[0] = np.array([0 for _ in range(TIME_STEPS)], dtype=np.float64)
+R_average[1] = np.array([0 for _ in range(TIME_STEPS)], dtype=np.float64)
 
 num_optimal_actions = np.array([0] * 2)
 
-
-# num_optimal_actions = np.array([0] * 2)
 
 def initialize_bandit_problem():
 
     global q 
     global Q
     global N 
-    global R 
-    global R_average
-    global num_optimal_actions
 
     # True q*(a) values (Will use this to compute the rewards)
-    q = np.array([1 for _ in range(k)]) 
+    q = np.array([0 for _ in range(k)]) 
 
     # Running value for incremental value for all actions
     Q = np.array([None] * 2)
@@ -79,12 +75,6 @@ def initialize_bandit_problem():
     N[0] = np.array([0 for _ in range(k)])
     N[1] = np.array([0 for _ in range(k)])
 
-    # Variables we document for plotting
-    R = np.array([None] * 2)
-    R[0] = np.array([0 for _ in range(TIME_STEPS)])
-    R[1] = np.array([0 for _ in range(TIME_STEPS)])
-
-    
 
 
 '''
@@ -136,12 +126,15 @@ def randomWalk(mean, standard_deviation):
     q = q + random_walk
 
 # Perform modified 10 armed bandit testbed
-NUM_RUNS = 100
+NUM_RUNS = 1000
 for i in tqdm(range(NUM_RUNS), desc = "Runs", unit="run"):
 
     initialize_bandit_problem()
 
     for t in range(TIME_STEPS):
+        
+        # Shift true value distribution
+        randomWalk(RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
 
         # Method 1: sample average
         A_1 = e_greedy(epsilon, Q[0])
@@ -149,21 +142,29 @@ for i in tqdm(range(NUM_RUNS), desc = "Runs", unit="run"):
         N[0][A_1] += 1
         Q[0][A_1] = Q[0][A_1] + ((1/N[0][A_1])*(R_1 - Q[0][A_1]))
 
-        # Shift true value distribution
-        randomWalk(RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
-
-        # Document reward for plotting
-        R[0][t] = R_1
+        # Document for plotting
+        # R[0][t] = R_1
         R_average[0][t] += R_1
-        # num_optimal_actions[0] += 1 if isOptimalAction(A_1) else 0
+        num_optimal_actions[0] += 1 if isOptimalAction(A_1) else 0
 
-        
 
         # Method 2: constant step size
-        # TODO
+        A_2 = e_greedy(epsilon, Q[1])
+        R_2 = reward(A_2)
+        N[1][A_2] += 1
+        Q[1][A_2] = Q[1][A_2] + ((alpha)*(R_2 - Q[1][A_2]))
+
+        # Document for plotting
+        # R[1][t] = R_2
+        R_average[1][t] += R_2
+        num_optimal_actions[1] += 1 if isOptimalAction(A_2) else 0
+
+        
     
     # Average results of run
-R_average /= NUM_RUNS
+    R_average[0] /= TIME_STEPS
+    R_average[1] /= TIME_STEPS
+
 
 ### Plot results
 sns.set_theme(style="whitegrid")
@@ -174,9 +175,9 @@ sns.set_theme(style="whitegrid")
 x_axis = [n for n in range(TIME_STEPS)]
 
 df = pd.DataFrame({
-    'Steps': np.concatenate([x_axis]),          # , x_axis
-    'Reward': R_average[0],                    # [ R[0], R[1] ]
-    'Methods': np.concatenate([['Method 1'] * len(x_axis), ])   # ['Method 2'] * len(x_axis),       
+    'Steps': np.concatenate([x_axis, x_axis]),          # , x_axis
+    'Reward': np.concatenate([R_average[0], R_average[1]]),                    # [ R[0], R[1] ]
+    'Methods': np.concatenate([['Method 1'] * len(x_axis), ['Method 2'] * len(x_axis)])   # ['Method 2'] * len(x_axis),       
 })
 
 # Create the scatter plot using Seaborn
