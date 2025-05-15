@@ -33,13 +33,13 @@ import pandas as pd
 from tqdm import tqdm
 
 
-SEED = 42
+# SEED = 42
 RANDOM_WALK_MEAN = 0
 RANDOM_WALK_STANDARD_DEVIATION = 0.01
 k = 10  # 10 Actions are: 0 1 2 3 4 5 6 7 8 9
 epsilon = 0.1
 alpha = 0.1     # constant step size parameter for method 2
-TIME_STEPS = 1000
+TIME_STEPS = 10_000
 # np.random.seed(SEED)
 
 q = None
@@ -49,12 +49,8 @@ N = None
 R_average = None
 num_optimal_actions = None
 
-R_average = np.array([None] * 2)
-R_average[0] = np.array([0 for _ in range(TIME_STEPS)], dtype=np.float64)
-R_average[1] = np.array([0 for _ in range(TIME_STEPS)], dtype=np.float64)
-
-num_optimal_actions = np.array([0] * 2)
-
+R_average = np.zeros(shape=(2, TIME_STEPS), dtype=np.float64)
+num_optimal_actions = np.zeros((2, TIME_STEPS), dtype=np.float64)
 
 def initialize_bandit_problem():
 
@@ -74,8 +70,6 @@ def initialize_bandit_problem():
     N = np.array([None] * 2)
     N[0] = np.array([0 for _ in range(k)])
     N[1] = np.array([0 for _ in range(k)])
-
-
 
 '''
 Take e-greedy action and return action we took from that
@@ -119,110 +113,75 @@ def isOptimalAction(action):
     optimal_action = np.argmax(q)   # gets index of action of highest q
     return True if (optimal_action == action) else False
 
-
-def randomWalk(mean, standard_deviation):
+def randomWalk(x, mean, standard_deviation):
     global q   # need to use this because this function is assigning a value to q, but we want it to point to the global q and not create a local q
-    random_walk = np.random.normal(mean, standard_deviation, len(q))
-    q = q + random_walk
+    # random_walk = np.random.normal(mean, standard_deviation, len(q))
 
-# Perform modified 10 armed bandit testbed
-NUM_RUNS = 1000
-for i in tqdm(range(NUM_RUNS), desc = "Runs", unit="run"):
+    walk_set = [-1, 0, 1]
+    for i in range(len(x)):
+        x[i] += np.random.choice(walk_set)
 
-    initialize_bandit_problem()
+def main():
+    # Perform modified 10 armed bandit testbed
+    NUM_RUNS = 100
+    for i in tqdm(range(NUM_RUNS), desc = "Runs", unit="run"):
 
-    for t in range(TIME_STEPS):
+        initialize_bandit_problem()
+
+        for t in range(TIME_STEPS):
+            
+            # Shift true value distribution
+            randomWalk(q, RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
+
+            # Method 1: sample average
+            A_1 = e_greedy(epsilon, Q[0])
+            R_1 = reward(A_1)
+            N[0][A_1] += 1
+            Q[0][A_1] = Q[0][A_1] + ((1/N[0][A_1])*(R_1 - Q[0][A_1]))
+            R_average[0][t] += R_1
+            num_optimal_actions[0][t] += int(isOptimalAction(A_1))
+
+            # Method 2: constant step size
+            A_2 = e_greedy(epsilon, Q[1])
+            R_2 = reward(A_2)
+            N[1][A_2] += 1
+            Q[1][A_2] = Q[1][A_2] + ((alpha)*(R_2 - Q[1][A_2]))
+            R_average[1][t] += R_2
+            num_optimal_actions[1][t] += int(isOptimalAction(A_2))
+
+            
         
-        # Shift true value distribution
-        randomWalk(RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
-
-        # Method 1: sample average
-        A_1 = e_greedy(epsilon, Q[0])
-        R_1 = reward(A_1)
-        N[0][A_1] += 1
-        Q[0][A_1] = Q[0][A_1] + ((1/N[0][A_1])*(R_1 - Q[0][A_1]))
-
-        # Document for plotting
-        # R[0][t] = R_1
-        R_average[0][t] += R_1
-        num_optimal_actions[0] += 1 if isOptimalAction(A_1) else 0
-
-
-        # Method 2: constant step size
-        A_2 = e_greedy(epsilon, Q[1])
-        R_2 = reward(A_2)
-        N[1][A_2] += 1
-        Q[1][A_2] = Q[1][A_2] + ((alpha)*(R_2 - Q[1][A_2]))
-
-        # Document for plotting
-        # R[1][t] = R_2
-        R_average[1][t] += R_2
-        num_optimal_actions[1] += 1 if isOptimalAction(A_2) else 0
-
-        
-    
     # Average results of run
-    R_average[0] /= TIME_STEPS
-    R_average[1] /= TIME_STEPS
+    R_average /= NUM_RUNS
+    num_optimal_actions = (num_optimal_actions / NUM_RUNS) * 100   # convert to %
 
 
-### Plot results
-sns.set_theme(style="whitegrid")
+    # Average Reward plot
+    fig, axs = plt.subplots(1, 2, figsize=(14, 5))
 
-# Plot reward
-# R = pd.DataFrame(R, columns=['Reward'])
+    axs[0].plot(R_average[0], label='Sample Average')
+    axs[0].plot(R_average[1], label='Constant Step Size α=0.1')
+    axs[0].set_xlabel('Steps')
+    axs[0].set_ylabel('Average Reward')
+    axs[0].set_title('Average Reward over Time')
+    axs[0].legend()
+    axs[0].grid(True)
 
-x_axis = [n for n in range(TIME_STEPS)]
+    # % Optimal Action plot
+    axs[1].plot(num_optimal_actions[0], label='Sample Average')
+    axs[1].plot(num_optimal_actions[1], label='Constant Step Size α=0.1')
+    axs[1].set_xlabel('Steps')
+    axs[1].set_ylabel('% Optimal Action')
+    axs[1].set_title('Optimal Action Percentage')
+    axs[1].legend()
+    axs[1].grid(True)
 
-df = pd.DataFrame({
-    'Steps': np.concatenate([x_axis, x_axis]),          # , x_axis
-    'Reward': np.concatenate([R_average[0], R_average[1]]),                    # [ R[0], R[1] ]
-    'Methods': np.concatenate([['Method 1'] * len(x_axis), ['Method 2'] * len(x_axis)])   # ['Method 2'] * len(x_axis),       
-})
+    plt.tight_layout()
+    plt.show()
 
-# Create the scatter plot using Seaborn
-plt.figure(figsize=(12, 6))
-sns.scatterplot(x='Steps', y='Reward', hue='Methods', data=df, s=5, alpha=0.6)
-
-plt.xlabel("Index")
-plt.ylabel("Value")
-plt.title("Scatter Plot of Three Things")
-plt.legend(title="Thing") # Optional: Customize legend title
-plt.show()
-
-
-
-# Plot % Optimal action
-
-
+# This ensures that this file is only ran when the python file is run
+# Without this, if we import this python file to another program it will run it and we dont want that
+if __name__ == "__main__":
+    main()
 
 
-# def plot_reward_distribution():
-#     pass
-
-#============================================================================================
-# Sandbox to test stuff
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# import pandas as pd
-# import numpy as np
-
-# sns.set_theme(style="whitegrid")
-
-# action = 0
-# reward_mean = q[action]
-# stdv = np.sqrt(1)
-# reward_distribution_array = np.random.normal(reward_mean, stdv, (200))
-
-# reward_distribution = pd.DataFrame(reward_distribution_array, columns=['Reward'])
-
-# f, ax = plt.subplots(figsize=(8, 6)) # Adjusted figure size
-# ax.set(ylim=(-5, 5))
-
-# sns.violinplot(data=reward_distribution, y='Reward', bw_adjust=.5, cut=1, linewidth=1, palette="Set3")
-# ax.axhline(y=reward_mean, color='red', linestyle='--', linewidth=1.5, label=f'Mean: {reward_mean:.2f}')
-
-# sns.despine(left=True, bottom=True)
-# plt.ylabel("Reward Value")
-# plt.title("Distribution of Rewards")
-# plt.show()
