@@ -36,9 +36,9 @@ from tqdm import tqdm
 # SEED = 42
 RANDOM_WALK_MEAN = 0
 RANDOM_WALK_STANDARD_DEVIATION = 0.01
-k = 10  # 10 Actions are: 0 1 2 3 4 5 6 7 8 9
+k = 10                  # 10 Actions are: 0 1 2 3 4 5 6 7 8 9
 epsilon = 0.1
-alpha = 0.1     # constant step size parameter for method 2
+alpha = 0.1             # constant step size parameter for method 2
 TIME_STEPS = 10_000
 # np.random.seed(SEED)
 
@@ -93,8 +93,8 @@ Reward from the 10-armed testbed Rt is selected from
     normal distribution:
         mean q*(At)
         variance 1
-    
 """
+
 def reward(action_index):
 
     reward_mean = q[action_index]
