@@ -82,7 +82,9 @@ optimistic_alpha = 0.1
 q = np.zeros( shape=(k), dtype=float)
 Q = np.zeros( shape=(len(Methods), k), dtype=float)
 N = np.zeros( shape=(len(Methods), k), dtype=int)
+
 R_average = np.zeros( shape=(len(Methods), len(params)), dtype=float)
+
 
 Q[Methods.optimistic] = np.full(shape=(k), fill_value=initial_optimistic_value)
 
@@ -92,14 +94,14 @@ def run_experiment():
     # TODO : Need to figure out loop for params and make them fit for each method - ask chat how to do
     for param_index, param_value in tqdm(enumerate(params)):
 
-        total_avg_reward = 0
+        R_total_all_runs_avg = np.zeros( shape=(len(Methods)) ,dtype=float)
 
         for run in tqdm(range(NUM_RUNS)):
             
             # TODO: Have other initializations
-            # reset_bandit_problem()    # TODO - make sure this doesn't mess with any others bc want this to be indp
+            reset_bandit_problem()    # TODO - make sure this doesn't mess with any others bc want this to be indp
 
-            total_reward_this_run = 0
+            R_total_reward_single_run = np.zeros( shape=(len(Methods)) ,dtype=float)
 
             for time in range(NUM_STEPS):
 
@@ -112,16 +114,18 @@ def run_experiment():
                 N[Methods.e_greedy][action] += 1
 
                 if time < 1000:
-                    total_reward_this_run += reward
+                    R_total_reward_single_run[Methods.e_greedy] += reward
 
-            total_avg_reward += (total_reward_this_run / 1000)
+            R_total_all_runs_avg[Methods.e_greedy] += (R_total_reward_single_run[Methods.e_greedy] / 1000)
 
-        R_average[Methods.e_greedy][param_index] = (total_avg_reward / NUM_FIRST_STEPS)
-       
+        R_average[Methods.e_greedy][param_index] = (R_total_all_runs_avg[Methods.e_greedy] / NUM_FIRST_STEPS)
+        # TODO add rest here
+
+
+
 
     # Printing
     print(NUM_FIRST_STEPS)
-    # print(START_OF_LAST)
     print("q: ", q)
     print("R avg: ", R_average)
 
@@ -140,19 +144,18 @@ def run_experiment():
 
 
 # Helper functions
+def optimistic_e_greedy_step(time, param_index):
+    global Q
+    global N
+    global R_average
 
-# def optimistic_e_greedy_step(time, param_index):
-#     global Q
-#     global N
-#     global R_average
+    action = get_e_greedy_action(epsilon, Q[Methods.optimistic_initialization_e_greedy])
+    reward = get_reward(action)
+    Q[Methods.optimistic] [action] = Q[Methods.optimistic] [action] + ( alpha * (reward - Q[Methods.optimistic] [action]))
+    N[Methods.e_greedy][action] += 1
 
-#     action = get_e_greedy_action(epsilon, Q[Methods.optimistic_initialization_e_greedy])
-#     reward = get_reward(action)
-#     Q[Methods.optimistic] [action] = Q[Methods.optimistic] [action] + ( alpha * (reward - Q[Methods.optimistic] [action]))
-#     N[Methods.e_greedy][action] += 1
-
-#     if time >= START_OF_LAST:
-#         R_average[Methods.optimistic][param_index] += reward
+    if time < NUM_FIRST_STEPS:
+        R_average[Methods.optimistic][param_index] += reward
 
 
 # def e_greedy_step(time, param_index):
@@ -165,8 +168,8 @@ def run_experiment():
 #     Q[Methods.e_greedy][action] = Q[Methods.e_greedy][action] + ( alpha * (reward - Q[Methods.e_greedy][action]))
 #     N[Methods.e_greedy][action] += 1
 
-    # if time < NUM_FIRST_STEPS:            #time >= START_OF_LAST:
-    #     R_average[Methods.e_greedy][param_index] += reward
+#     if time < NUM_FIRST_STEPS:            #time >= START_OF_LAST:
+#         R_average[Methods.e_greedy][param_index] += reward
 
 
 def reset_bandit_problem():
@@ -175,18 +178,25 @@ def reset_bandit_problem():
     global Q
     global N 
 
+    q = np.zeros( shape=(k), dtype=float)
+    Q = np.zeros( shape=(len(Methods), k), dtype=float)
+    N = np.zeros( shape=(len(Methods), k), dtype=int)
+
+    Q[Methods.optimistic] = np.full(shape=(k), fill_value=initial_optimistic_value)
+
+
     # True q*(a) values (Will use this to compute the rewards)
-    q = np.array([0 for _ in range(k)]) 
+    # q = np.array([0 for _ in range(k)]) 
 
     # Running value for incremental value for all actions
-    Q = np.array([None] * 2)
-    Q[0] = np.array([0 for _ in range(k)]) # Estimated Q for method 1
-    Q[1] = np.array([0 for _ in range(k)]) # Estimated Q for method 2
+    # Q = np.array([None] * 2)
+    # Q[0] = np.array([0 for _ in range(k)]) # Estimated Q for method 1
+    # Q[1] = np.array([0 for _ in range(k)]) # Estimated Q for method 2
 
-    # Number of times we've seen action thus far
-    N = np.array([None] * 2)
-    N[0] = np.array([0 for _ in range(k)])
-    N[1] = np.array([0 for _ in range(k)])
+    # # Number of times we've seen action thus far
+    # N = np.array([None] * 2)
+    # N[0] = np.array([0 for _ in range(k)])
+    # N[1] = np.array([0 for _ in range(k)])
 
 def randomWalk(x):
 
