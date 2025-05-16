@@ -41,7 +41,7 @@ class Methods(IntEnum):
     e_greedy = 0
     optimistic = 1      # Greedy with optimistic initialization
     ucb = 2
-    gradient_bandit = 3
+    gradient = 3
 
 
 # Experiment Variables
@@ -59,14 +59,17 @@ alpha = 0.1
 
 # Using incremental method to update Q, N, R so only need to keep one value per action
 q = np.zeros( shape=(k), dtype=float)
-Q = np.zeros( shape=(len(Methods), k), dtype=float)
-N = np.full( shape=(len(Methods), k), fill_value=1e-9,dtype=float)    # initialize with non zero so we can compute UCB
+Q = np.zeros( shape=(len(Methods) - 1, k), dtype=float)
+N = np.full( shape=(len(Methods) - 1, k), fill_value=1e-9,dtype=float)    # initialize with non zero so we can compute UCB
+
+H = np.zeros( shape=(k), dtype=float)
+probabilities = np.empty(shape=H.shape)
 
 R_average = np.zeros( shape=(len(Methods), 10), dtype=float)
 
 def run_experiment():
 
-    methods = [ 'ucb'] #   'e-greedy', , 'ucb', 'gradient'
+    methods = [ 'gradient'] #   'e-greedy', , 'ucb', 'gradient'
 
     for method in methods: 
 
@@ -113,7 +116,7 @@ def run_experiment():
                             R_total_reward_single_run[Methods.e_greedy] += reward
 
 
-                    # Method 2: Greedy with optimistic initialization, alpha = 0.1
+                    # Greedy with optimistic initialization, alpha = 0.1
                     if method == 'optimistic':
                         action = get_e_greedy_action(epsilon=0, Q=Q[Methods.optimistic])
                         reward = get_reward(action)
@@ -130,6 +133,25 @@ def run_experiment():
                         if time < 1000:
                             R_total_reward_single_run[Methods.ucb] += reward
 
+                    if method == 'gradient':
+                        # picks action from softmax prob distribution
+                        # updates preferences using stochastic gradient ascent
+                        # does not use Q or N values but just trial and error with preference
+                        action = get_gradient_action(H)
+                        reward = get_reward(action)
+
+                        if time < 1000:
+                            R_total_reward_single_run[Methods.gradient] += reward
+
+                        baseline = R_total_reward_single_run[Methods.gradient] / (time + 1)
+                        H[action] = H[action] + (alpha*(reward - baseline)*(1 - probabilities[action]))
+
+                        for a in range(k):
+                            if a == action:
+                                continue
+                            
+                            H[a] = H[a] - (alpha*(reward - baseline)*probabilities[a])
+
 
                 if method == 'e-greedy':
                     R_total_all_runs_avg[Methods.e_greedy] += (R_total_reward_single_run[Methods.e_greedy] / 1000)
@@ -140,7 +162,9 @@ def run_experiment():
                 if method == 'ucb':
                     R_total_all_runs_avg[Methods.ucb] += (R_total_reward_single_run[Methods.ucb] / 1000)
 
-                # TODO: add rest here
+                if method == 'gradient':
+                    R_total_all_runs_avg[Methods.gradient] += (R_total_reward_single_run[Methods.gradient] / 1000)
+
             if method == 'e-greedy':
                 R_average[Methods.e_greedy][param_index] = (R_total_all_runs_avg[Methods.e_greedy] / NUM_FIRST_STEPS)
             
@@ -150,17 +174,15 @@ def run_experiment():
             if method == 'ucb':
                 R_average[Methods.ucb][param_index] = (R_total_all_runs_avg[Methods.ucb] / NUM_FIRST_STEPS)
 
-
-
-            # TODO add rest here
-
+            if method == 'gradient':
+                R_average[Methods.gradient][param_index] = (R_total_all_runs_avg[Methods.gradient] / NUM_FIRST_STEPS)
 
 
     # Printing
 
     # Define x-values (log-spaced)
     x = np.geomspace(1/128, 4, 10)
-    y = R_average[Methods.ucb]
+    y = R_average[Methods.gradient]
     y = np.where(y == 0, np.nan, y)
     # Create labels as fractions
     tick_labels = ["1/128", "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4"]
@@ -190,12 +212,26 @@ def run_experiment():
 
 
 # Helper functions
+def get_gradient_action(H):
+    global probabilities
+
+    softmax_denominator = 0
+    for h in H:
+        softmax_denominator += np.exp(h)
+
+    probabilities = np.empty(shape=H.shape)
+    
+    for i, h in enumerate(H):
+        probabilities[i] = (np.exp(h) / softmax_denominator)
+    
+    # Return index of random choice with probabilities generated from softmax distribution
+    return np.random.choice(np.arange(k), p=probabilities)
+
 def get_ucb_action(c, t, Q, N):
 
     UCB = c * np.sqrt(np.log(t)) * np.sqrt((N**-1))
     Q_ucb = Q + UCB
     return np.argmax(Q_ucb)
-
 
 def reset_bandit_problem(param_value):
 
