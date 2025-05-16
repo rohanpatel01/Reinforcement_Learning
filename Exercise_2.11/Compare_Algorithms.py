@@ -35,9 +35,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 
+np.random.seed(42)
+
 class Methods(IntEnum):
     e_greedy = 0
-    greedy_optimistic_initialization = 1
+    optimistic = 1      # Greedy with optimistic initialization
     ucb = 2
     gradient_bandit = 3
 
@@ -45,13 +47,14 @@ class Methods(IntEnum):
 # Experiment Variables
 Average_Reward = np.zeros(shape=(4), dtype=float)
 
-NUM_RUNS = 10      # Ideally want 1000 or 2000 like what Exercise 2.5 wanted
+NUM_RUNS = 200      # Ideally want 1000 or 2000 like what Exercise 2.5 wanted
 NUM_STEPS = 1000    # want 200_000
 
-LAST_STEPS_FRACTION = 1 - (0.5)       # Record this last fraction of timesteps
-NUM_LAST_STEPS = NUM_RUNS * LAST_STEPS_FRACTION    # start recording rewards after this many time steps have passed
-START_OF_LAST = NUM_STEPS - NUM_LAST_STEPS
+# LAST_STEPS_FRACTION = 1 - (0.5)       # Record this last fraction of timesteps
+# NUM_LAST_STEPS = NUM_RUNS * LAST_STEPS_FRACTION    # start recording rewards after this many time steps have passed
+# START_OF_LAST = NUM_STEPS - NUM_LAST_STEPS
 
+NUM_FIRST_STEPS = 1000
 
 start = 1/128
 end = 1/4
@@ -66,14 +69,14 @@ params = np.geomspace(start, end, num)
 # ex: e-greedy param cannot go above 1
 # look at graph and do same for others 
 
-RANDOM_WALK_MEAN = 0
-RANDOM_WALK_STANDARD_DEVIATION = 0.01
-
-
 # e-greedy variables
 k = 10
 epsilon = 0.1
 alpha = 0.1
+
+# Optimistic variables
+initial_optimistic_value = 200
+optimistic_alpha = 0.1
 
 # Using incremental method to update Q, N, R so only need to keep one value per action
 q = np.zeros( shape=(k), dtype=float)
@@ -81,56 +84,90 @@ Q = np.zeros( shape=(len(Methods), k), dtype=float)
 N = np.zeros( shape=(len(Methods), k), dtype=int)
 R_average = np.zeros( shape=(len(Methods), len(params)), dtype=float)
 
+Q[Methods.optimistic] = np.full(shape=(k), fill_value=initial_optimistic_value)
+
 
 def run_experiment():
 
     # TODO : Need to figure out loop for params and make them fit for each method - ask chat how to do
     for param_index, param_value in tqdm(enumerate(params)):
-        for run in tqdm(range(NUM_RUNS)):
 
+        total_avg_reward = 0
+
+        for run in tqdm(range(NUM_RUNS)):
+            
             # TODO: Have other initializations
             # reset_bandit_problem()    # TODO - make sure this doesn't mess with any others bc want this to be indp
 
+            total_reward_this_run = 0
+
             for time in range(NUM_STEPS):
 
-                randomWalk(q, RANDOM_WALK_MEAN, RANDOM_WALK_STANDARD_DEVIATION)
+                randomWalk(q)
 
                 # Method 1: E-greedy 
-                e_greedy_step(time, param_index)
+                action = get_e_greedy_action(epsilon=params[param_index], Q=Q[Methods.e_greedy])
+                reward = get_reward(action)
+                Q[Methods.e_greedy][action] = Q[Methods.e_greedy][action] + ( alpha * (reward - Q[Methods.e_greedy][action]))
+                N[Methods.e_greedy][action] += 1
 
-        
-        R_average[Methods.e_greedy][param_index] /= NUM_LAST_STEPS
+                if time < 1000:
+                    total_reward_this_run += reward
+
+            total_avg_reward += (total_reward_this_run / 1000)
+
+        R_average[Methods.e_greedy][param_index] = (total_avg_reward / NUM_FIRST_STEPS)
        
 
     # Printing
-    print(NUM_LAST_STEPS)
-    print(START_OF_LAST)
+    print(NUM_FIRST_STEPS)
+    # print(START_OF_LAST)
     print("q: ", q)
     print("R avg: ", R_average)
 
     # Plot results
+    plt.xscale('log')
+    plt.xlabel('x (log scale)')
+    plt.ylabel('Average Reward of First ' + str(NUM_FIRST_STEPS) + ' steps')
+    plt.title('Parameter Study')
+
     x = params 
     y = R_average[Methods.e_greedy]
     figure, axes = plt.subplots()
     axes.plot(x, y)
-    # axes.title("Parameter Study")
     plt.show()
 
 
 
 # Helper functions
-def e_greedy_step(time, param_index):
-    global Q
-    global N
-    global R_average
 
-    action = get_e_greedy_action(epsilon, Q[Methods.e_greedy])
-    reward = get_reward(action)
-    Q[Methods.e_greedy][action] = Q[Methods.e_greedy][action] + ( alpha * (reward - Q[Methods.e_greedy][action]))
-    N[Methods.e_greedy][action] += 1
+# def optimistic_e_greedy_step(time, param_index):
+#     global Q
+#     global N
+#     global R_average
 
-    if time >= START_OF_LAST:
-        R_average[Methods.e_greedy][param_index] += reward
+#     action = get_e_greedy_action(epsilon, Q[Methods.optimistic_initialization_e_greedy])
+#     reward = get_reward(action)
+#     Q[Methods.optimistic] [action] = Q[Methods.optimistic] [action] + ( alpha * (reward - Q[Methods.optimistic] [action]))
+#     N[Methods.e_greedy][action] += 1
+
+#     if time >= START_OF_LAST:
+#         R_average[Methods.optimistic][param_index] += reward
+
+
+# def e_greedy_step(time, param_index):
+#     global Q
+#     global N
+#     global R_average
+    
+#     action = get_e_greedy_action(epsilon=params[param_index], Q=Q[Methods.e_greedy])
+#     reward = get_reward(action)
+#     Q[Methods.e_greedy][action] = Q[Methods.e_greedy][action] + ( alpha * (reward - Q[Methods.e_greedy][action]))
+#     N[Methods.e_greedy][action] += 1
+
+    # if time < NUM_FIRST_STEPS:            #time >= START_OF_LAST:
+    #     R_average[Methods.e_greedy][param_index] += reward
+
 
 def reset_bandit_problem():
 
@@ -151,7 +188,7 @@ def reset_bandit_problem():
     N[0] = np.array([0 for _ in range(k)])
     N[1] = np.array([0 for _ in range(k)])
 
-def randomWalk(x, mean, standard_deviation):
+def randomWalk(x):
 
     walk_set = [-0.1, 0, 0.1]
     for i in range(len(x)):
