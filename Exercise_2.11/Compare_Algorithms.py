@@ -47,10 +47,10 @@ class Methods(IntEnum):
 # Experiment Variables
 Average_Reward = np.zeros(shape=(4), dtype=float)
 
-NUM_RUNS = 200      # Ideally want 1000 or 2000 like what Exercise 2.5 wanted
-NUM_STEPS = 500    # want 200_000
+NUM_RUNS = 2000     # Ideally want 1000 or 2000 like what Exercise 2.5 wanted
+NUM_STEPS = 1000    # want 200_000
 
-NUM_FIRST_STEPS = 500
+NUM_FIRST_STEPS = 1000
 
 # e-greedy variables
 k = 10
@@ -69,7 +69,7 @@ R_average = np.zeros( shape=(len(Methods), 10), dtype=float)
 
 def run_experiment():
 
-    methods = [ 'gradient'] #   'e-greedy', , 'ucb', 'gradient'
+    methods = ['e-greedy', 'optimistic', 'ucb', 'gradient'] 
 
     for method in methods: 
 
@@ -91,7 +91,6 @@ def run_experiment():
 
             # Param Q initialization for greedy optimistic
             Q[Methods.optimistic] = np.full(shape=(k), fill_value=param_value)
-            print("Params: ", params)
 
             R_total_all_runs_avg = np.zeros( shape=(len(Methods)) ,dtype=float)
 
@@ -112,7 +111,7 @@ def run_experiment():
                         Q[Methods.e_greedy][action] = Q[Methods.e_greedy][action] + ( alpha * (reward - Q[Methods.e_greedy][action]))
                         N[Methods.e_greedy][action] += 1
 
-                        if time < 1000:
+                        if time < NUM_FIRST_STEPS:
                             R_total_reward_single_run[Methods.e_greedy] += reward
 
 
@@ -122,7 +121,7 @@ def run_experiment():
                         reward = get_reward(action)
                         Q[Methods.optimistic][action] = Q[Methods.optimistic][action] + ( alpha * (reward - Q[Methods.optimistic][action]))
                         N[Methods.optimistic][action] += 1
-                        if time < 1000:
+                        if time < NUM_FIRST_STEPS:
                             R_total_reward_single_run[Methods.optimistic] += reward
                     
                     if method == 'ucb':
@@ -130,7 +129,7 @@ def run_experiment():
                         reward = get_reward(action)
                         Q[Methods.ucb][action] = Q[Methods.ucb][action] + ( alpha * (reward - Q[Methods.ucb][action]))
                         N[Methods.ucb][action] += 1
-                        if time < 1000:
+                        if time < NUM_FIRST_STEPS:
                             R_total_reward_single_run[Methods.ucb] += reward
 
                     if method == 'gradient':
@@ -140,30 +139,30 @@ def run_experiment():
                         action = get_gradient_action(H)
                         reward = get_reward(action)
 
-                        if time < 1000:
+                        if time < NUM_FIRST_STEPS:
                             R_total_reward_single_run[Methods.gradient] += reward
 
                         baseline = R_total_reward_single_run[Methods.gradient] / (time + 1)
-                        H[action] = H[action] + (alpha*(reward - baseline)*(1 - probabilities[action]))
+                        H[action] = H[action] + (param_value*(reward - baseline)*(1 - probabilities[action]))
 
                         for a in range(k):
                             if a == action:
                                 continue
                             
-                            H[a] = H[a] - (alpha*(reward - baseline)*probabilities[a])
+                            H[a] = H[a] - (param_value*(reward - baseline)*probabilities[a])
 
 
                 if method == 'e-greedy':
-                    R_total_all_runs_avg[Methods.e_greedy] += (R_total_reward_single_run[Methods.e_greedy] / 1000)
+                    R_total_all_runs_avg[Methods.e_greedy] += (R_total_reward_single_run[Methods.e_greedy] / NUM_STEPS)
                 
                 if method == 'optimistic':
-                    R_total_all_runs_avg[Methods.optimistic] += (R_total_reward_single_run[Methods.optimistic] / 1000)
+                    R_total_all_runs_avg[Methods.optimistic] += (R_total_reward_single_run[Methods.optimistic] / NUM_STEPS)
 
                 if method == 'ucb':
-                    R_total_all_runs_avg[Methods.ucb] += (R_total_reward_single_run[Methods.ucb] / 1000)
+                    R_total_all_runs_avg[Methods.ucb] += (R_total_reward_single_run[Methods.ucb] / NUM_STEPS)
 
                 if method == 'gradient':
-                    R_total_all_runs_avg[Methods.gradient] += (R_total_reward_single_run[Methods.gradient] / 1000)
+                    R_total_all_runs_avg[Methods.gradient] += (R_total_reward_single_run[Methods.gradient] / NUM_STEPS)
 
             if method == 'e-greedy':
                 R_average[Methods.e_greedy][param_index] = (R_total_all_runs_avg[Methods.e_greedy] / NUM_FIRST_STEPS)
@@ -178,20 +177,37 @@ def run_experiment():
                 R_average[Methods.gradient][param_index] = (R_total_all_runs_avg[Methods.gradient] / NUM_FIRST_STEPS)
 
 
-    # Printing
 
     # Define x-values (log-spaced)
     x = np.geomspace(1/128, 4, 10)
-    y = R_average[Methods.gradient]
-    y = np.where(y == 0, np.nan, y)
+
     # Create labels as fractions
     tick_labels = ["1/128", "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4"]
 
     fig, ax = plt.subplots()
     ax.set_xscale('log')
 
-    # Plot example
-    ax.plot(x, y, label='example', color='blue')
+    x_greedy_param = np.geomspace(1/128, 1/4, 6)
+    x_optimistic_param = np.geomspace(1/4, 4, 5)
+    x_ucb_param = np.geomspace(1/16, 4, 7)
+    x_gradient_param = np.geomspace(1/32, 3, 7)
+
+    print("R_avg values: ")
+    print(R_average[Methods.e_greedy])
+    print(R_average[Methods.optimistic])
+    print(R_average[Methods.ucb])
+    print(R_average[Methods.gradient])
+
+    print("Trimmed: R_avg values: ")
+    print(np.trim_zeros(R_average[Methods.e_greedy], 'b'))
+    print(np.trim_zeros(R_average[Methods.optimistic], 'b'))
+    print(np.trim_zeros(R_average[Methods.ucb], 'b'))
+    print(np.trim_zeros(R_average[Methods.gradient], 'b'))
+
+    ax.plot(x_greedy_param, np.trim_zeros(R_average[Methods.e_greedy], 'b'), label='e_greedy', color='red')
+    ax.plot(x_optimistic_param, np.trim_zeros(R_average[Methods.optimistic], 'b'), label='optimistic', color='black')
+    ax.plot(x_ucb_param, np.trim_zeros(R_average[Methods.ucb], 'b'), label='ucb', color='blue')
+    ax.plot(x_gradient_param, np.trim_zeros(R_average[Methods.gradient], 'b'), label='gradient', color='green')
 
     # Set custom ticks and labels
     ax.set_xticks(x)
@@ -241,7 +257,7 @@ def reset_bandit_problem(param_value):
 
     q = np.zeros( shape=(k), dtype=float)
     Q = np.zeros( shape=(len(Methods), k), dtype=float)
-    N = np.zeros( shape=(len(Methods), k), dtype=float)
+    N = np.full( shape=(len(Methods) - 1, k), fill_value=1e-9,dtype=float)    # initialize with non zero so we can compute UCB
 
     Q[Methods.optimistic] = np.full(shape=(k), fill_value=param_value)
 
