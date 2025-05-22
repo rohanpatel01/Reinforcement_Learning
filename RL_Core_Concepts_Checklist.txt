@@ -1,0 +1,70 @@
+
+# Reinforcement Learning Core Concepts Checklist (Sutton & Barto Chs 2–13)
+
+## ✅ Fundamental Concepts
+- [ ] Understand and define the return \( G_t \)
+- [ ] Understand the Markov property
+- [ ] Differentiate between value functions: \( v_\pi(s) \), \( q_\pi(s, a) \)
+- [ ] Implement and explain ε-greedy action selection
+- [ ] Derive and use the Bellman expectation and optimality equations
+
+## 📘 Chapter 2: Multi-Armed Bandits
+- [ ] Compute and update action-value estimates (sample average and incremental)
+- [ ] Implement ε-greedy and UCB strategies
+
+## 📘 Chapter 3: Finite MDPs
+- [ ] Define states, actions, rewards, and transitions
+- [ ] Compute expected returns
+- [ ] Apply Bellman expectation equations
+
+## 📘 Chapter 4: Dynamic Programming
+- [ ] Perform iterative policy evaluation
+- [ ] Apply policy improvement and iteration
+- [ ] Use value iteration algorithm
+
+## 📘 Chapter 5: Monte Carlo Methods
+- [ ] Differentiate first-visit and every-visit MC
+- [ ] Estimate value functions from sample returns
+- [ ] Implement MC control with ε-greedy
+
+## 📘 Chapter 6: Temporal-Difference Learning
+- [ ] Implement TD(0) update
+- [ ] Compare SARSA and Q-learning algorithms
+
+## 📘 Chapter 7: n-step Bootstrapping
+- [ ] Calculate n-step returns
+- [ ] Generalize TD methods with n-step returns
+
+## 📘 Chapter 8: Planning and Learning with Dyna
+- [ ] Understand model-based vs. model-free learning
+- [ ] Implement Dyna-Q: real + simulated experience
+
+## 📘 Chapter 9: On-policy vs Off-policy Learning
+- [ ] Apply importance sampling for off-policy learning
+- [ ] Implement off-policy MC and TD methods
+
+## 📘 Chapter 10: Eligibility Traces
+- [ ] Understand eligibility traces and λ-return
+- [ ] Implement TD(λ)
+- [ ] Analyze bias-variance tradeoff with λ
+
+## 📘 Chapter 11: Policy Gradient Methods
+- [ ] Derive and apply REINFORCE algorithm
+- [ ] Understand the policy gradient theorem
+- [ ] Optimize policy using gradient ascent
+
+## 📘 Chapter 12: Integrating Learning and Planning
+- [ ] Integrate model-free and model-based RL
+- [ ] Understand prioritized sweeping and other planning strategies
+
+## 📘 Chapter 13: Function Approximation
+- [ ] Use linear function approximation for value functions
+- [ ] Derive and apply gradient-descent TD updates
+- [ ] Distinguish between tabular and approximated methods
+
+---
+
+## ⭐ Mastery Goals
+- [ ] Comfortably derive and explain core RL equations
+- [ ] Debug and implement RL algorithms from scratch
+- [ ] Apply RL to benchmark environments (e.g., CartPole, Atari)
