@@ -11,6 +11,9 @@ env.P[state][action] =
 '''
 
 def print_env_description(env):
+
+    desc = env.desc
+
     if isinstance(env.observation_space, gym.spaces.Discrete):
         print("  Number of possible states (positions):", env.observation_space.n)
         print("  Possible state values are integers from 0 to", env.observation_space.n - 1)
@@ -64,11 +67,10 @@ if __name__ == '__main__':
 
     # state is the current position on the lake
     # static structure of environment would be
-
-    # desc = ["SFFF", "FFFF", "FFFF", "FFFG"]
-    # env = gym.make('FrozenLake-v1', desc=desc, is_slippery=False)
     env = gym.make("FrozenLake-v1")
     env = env.unwrapped
+
+    # print_env_description(env)
 
     # Using an equiprobable policy
     policy = np.ones( (env.observation_space.n, env.action_space.n) ) / env.action_space.n
