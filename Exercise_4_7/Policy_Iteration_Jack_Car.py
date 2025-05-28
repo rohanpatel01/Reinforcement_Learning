@@ -6,7 +6,7 @@ from scipy.stats import poisson
 import matplotlib.pyplot as plt
 
 
-MAX_CARS_IN_LOCATION = 3
+MAX_CARS_IN_LOCATION = 10
 NUM_STATES = MAX_CARS_IN_LOCATION + 1       # plus 1 to include zero
 NUM_ACTIONS = 11 # (0 to 5) and (-1 to -5)
 
@@ -18,7 +18,9 @@ REQUEST_LAMBDA_B = 4    # max = 10
 
 
 # for this problem we won't define an env because we will compute p for every s,a within policy eval
-def policy_evaluation(policy, values, theta, gamma ):
+def policy_evaluation(policy, values, actions, theta, gamma ):
+
+    print("Starting Policy Evaluation")
 
     delta = float('inf')
     cars_A_range = range(MAX_CARS_IN_LOCATION + 1)
@@ -74,10 +76,10 @@ def policy_evaluation(policy, values, theta, gamma ):
             # end of next state
             delta = max(delta, abs(v - new_value))
             values[cars_A][cars_B] = new_value
-            print("State: ", cars_A ," ", cars_B)
-            print("Delta: ", delta)
-            print("theta: ", theta)
-            print("-------------------------")
+            # print("State: ", cars_A ," ", cars_B)
+            # print("Delta: ", delta)
+            # print("theta: ", theta)
+            # print("-------------------------")
         # end of current state
 
         i += 1
@@ -86,8 +88,84 @@ def policy_evaluation(policy, values, theta, gamma ):
     # end of while loop
     return values
 
-def policy_iteration(policy, values):
-    pass
+def policy_improvement(policy, values, actions, gamma):
+
+    print("Starting Policy Improvement")
+    cars_A_range = range(MAX_CARS_IN_LOCATION + 1)
+    cars_B_range = range(MAX_CARS_IN_LOCATION + 1)
+
+    return_A_range = range(0, int(RETURN_LAMBDA_A + (3 * np.sqrt(RETURN_LAMBDA_A))) - 2)
+    request_A_range = range(0, int(REQUEST_LAMBDA_A + (3 * np.sqrt(REQUEST_LAMBDA_A))) - 2)
+
+    return_B_range = range(0, int(RETURN_LAMBDA_B + (3 * np.sqrt(RETURN_LAMBDA_B))) - 2)
+    request_B_range = range(0, int(REQUEST_LAMBDA_B + (3 * np.sqrt(REQUEST_LAMBDA_B))) - 2)
+
+    policy_stable = True
+    for cars_A, cars_B in itertools.product(cars_A_range, cars_B_range):
+
+        old_action_index = policy[cars_A][cars_B]
+        old_action_A, old_action_B = actions[policy[cars_A][cars_B]]
+
+        highest_actions = []
+        highest_value = float('-inf')
+
+        # compute argmax a  V(s)
+        for i in range(len(actions)):
+            action_A, action_B = actions[i]
+
+            # Compute value of state from following current action
+            value = 0
+            for return_A, request_A, return_B, request_B in itertools.product(return_A_range, request_A_range, return_B_range, request_B_range):
+
+                # Ensure action is valid for state
+                #   case: we don't have enough cars to give away    case: we dont have enough spaces to take in cars
+                if ( (action_A < 0) and (cars_A < abs(action_A))) or ( (action_A > 0) and (MAX_CARS_IN_LOCATION - cars_A) < action_A ):
+                    continue
+
+                cars_A_after_action = cars_A + action_A
+                cars_B_after_action = cars_B + action_B
+
+                rent_A = min(cars_A_after_action, request_A)
+                rent_B = min(cars_B_after_action, request_B)
+
+                next_A = min(MAX_CARS_IN_LOCATION, cars_A_after_action - rent_A + return_A)
+                next_B = min(MAX_CARS_IN_LOCATION, cars_B_after_action - rent_B + return_B)
+
+                probability = (
+                    poisson.pmf(return_A, RETURN_LAMBDA_A) *
+                    poisson.pmf(request_A, REQUEST_LAMBDA_A) *
+                    poisson.pmf(return_B, RETURN_LAMBDA_B) *
+                    poisson.pmf(request_B, REQUEST_LAMBDA_B)
+                )
+
+                # Note: Just using action_A to represent number of cars moved overnight bc action_B is just the inverse
+                reward = 10*(rent_A + rent_B) -2*abs(action_A) # TODO: This is where improper action could affect V(S)
+                value += (probability * (reward + (gamma * values[next_A][next_B])))
+
+            if value > highest_value:
+                highest_value = value
+                highest_actions = [i]
+
+            elif value == highest_value:
+                highest_actions.append(i)
+
+
+        # choose the first action in highest_actions as to avoid switching between actions that are equally good
+        policy[cars_A][cars_B] = highest_actions[0]
+
+        if old_action_index not in highest_actions:
+            policy_stable = False
+    # end of for each s
+
+    return policy_stable, policy
+
+    # if policy_stable:
+    #     return values, policy
+    # else:
+    #     new_values = policy_evaluation(policy, values, 10, 0.9)
+
+    # TODO: After we get policy improvement to work (can check by running it once and ensuring that the value for every state increases)
+    # TODO:
 
 def generate_policy_graph(policy, actions):
     # Extract the action_A component for each state
@@ -167,12 +245,57 @@ def generate_policy_graph(policy, actions):
     plt.tight_layout()
     plt.show()
 
+
+def policy_iteration(policy, values, actions, theta, gamma):
+    # TODO: Change iteration to be forever until convergence to optimal
+    # TODO: Make sure to continue printing to ensure we know what's going on in the loop - so ADD MORE PRINT STATEMENTS
+    i = 0
+    while True:
+        # 2. Policy Evaluation
+        values = policy_evaluation(policy, values, actions, theta, gamma)
+
+        print("-----------")
+        print("Values : (They should be strictly increasing unless already optimal)")
+        print(values)
+        print("-----------")
+
+        # 3. Policy Improvement
+        policy_stable, policy = policy_improvement(policy, values, actions, gamma)
+
+        print("Policy: ")
+        for A in range(0, MAX_CARS_IN_LOCATION + 1):
+            for B in range(0, MAX_CARS_IN_LOCATION + 1):
+                print(actions[policy[A][B]][0], end=" ")
+            print()
+
+
+        # Note: if policy is stable then the value of this policy will be the same as before so no need to recompute the value of this (now optimal) policy bc we already have
+        # it from the previous iteration and it will be "values"
+
+        if policy_stable:
+            return values, policy
+        else:
+            i += 1
+            print("Policy Iteration: i: ", i)
+
+
+
+    return values, policy
+
+
+
+
+
+
+
 if __name__ == '__main__':
 
-    # deterministic policy so policy just gives us the action to take in the given state
-    policy = np.zeros(shape=(NUM_STATES, NUM_STATES), dtype=int) # Policy maps states [(Cars in A, Cars in B)] => Action index
-    values = np.zeros(shape=(NUM_STATES, NUM_STATES), dtype=float)
-    actions = []                    # Actions contains all pairs of valid actions, accessed by index given by policy
+    # 1. Initialization
+    policy = np.zeros(shape=(NUM_STATES, NUM_STATES),
+                      dtype=int)  # Policy maps states [(Cars in A, Cars in B)] => Action index
+    values = np.full(shape=(NUM_STATES, NUM_STATES), fill_value=100.0,
+                     dtype=float)  # optimistic initialization to get faster convergence and encourage exploration
+    actions = []  # Actions contains all pairs of valid actions, accessed by index given by policy
 
     for action_A, action_B in itertools.product(range(-5, 6), repeat=2):
         if action_A + action_B == 0:
@@ -181,8 +304,17 @@ if __name__ == '__main__':
     actions.sort(key=lambda x: (x[0] < 0, abs(x[0])))
     actions = np.array(actions, dtype=int)
 
-    new_values = policy_evaluation(policy, values, 10, 0.9)
+    theta = 0.1
+    gamma = 0.9
 
+
+    # deterministic policy so policy just gives us the action to take in the given state
+    values, policy = policy_iteration(policy, values, actions, theta, gamma)
+
+    print("=====================================")
+    print("=====================================")
+
+    print("Final ~Optimal Values and Policy")
     # generate_policy_graph(policy, actions)
 
     print("Policy: ")
@@ -191,6 +323,6 @@ if __name__ == '__main__':
             print(actions[policy[A][B]][0], end=" ")
         print()
 
-    print("New Values: ")
-    print(new_values)
+    print("Values: ")
+    print(values)
 
