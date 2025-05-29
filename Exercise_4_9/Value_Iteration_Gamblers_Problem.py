@@ -69,10 +69,13 @@ def value_iteration(actions, rewards, theta, gamma, probability_heads):
     # Get deterministic policy
     policy = np.empty(NUM_STATES)
 
+    optimal_actions = []
+
     for s in states:
 
         argmax_a = None
         policy_max_value_a = 0
+        max_value_actions = []
 
         for a in actions[s]:
             value_a = 0
@@ -88,9 +91,22 @@ def value_iteration(actions, rewards, theta, gamma, probability_heads):
             if value_a > policy_max_value_a:
                 policy_max_value_a = value_a
                 argmax_a = a
+                max_value_actions = [a]
 
+            elif value_a == policy_max_value_a:
+                max_value_actions.append(a)
+
+        optimal_actions.append(max_value_actions)
         policy[s] = argmax_a
 
+    print()
+    print("Notice there are multiple optimal actions which explains why the final policy does not look as neat as the one presented in Figure 4.3")
+    print("This is because the policy is optimal but not unique. So any combination of these actions in their respective states will give the exact same optimal value function and the resulting policy will be optimal.")
+    print("Set of optimal actions: ")
+    for i, s in enumerate(states):
+        print("State s ", s, " optimal actions: ", optimal_actions[i])
+
+    print()
 
     return policy, values, sweeps
 
@@ -130,7 +146,7 @@ if __name__ == '__main__':
 
     NUM_STATES = 100 + 1
     gamma = 1 # undiscounted case
-    theta = 1e-12
+    theta = 1e-6
 
     print("Initializing")
     states = np.arange(start=0, stop=NUM_STATES, step=1, dtype=int)
@@ -141,6 +157,11 @@ if __name__ == '__main__':
     actions = np.empty(shape=(NUM_STATES), dtype=object)
     for s in states:
         actions[s] = np.arange(start=0, stop=min(s, (NUM_STATES-1) - s ) + 1, step=1, dtype=int)
+
+
+    # for s in states:
+    #     print("State ", s, " A(s): ", actions[s])
+
 
     print("Starting value iteration")
     start_time = time.time()
