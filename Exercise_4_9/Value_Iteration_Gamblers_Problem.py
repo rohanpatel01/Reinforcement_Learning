@@ -97,18 +97,29 @@ def value_iteration(actions, rewards, theta, gamma, probability_heads):
 def plot_results():
 
     capital = np.arange(start=1, stop=100, step=1)
-    # values_plot = values[1: NUM_STATES-1]
+
+    # Plot Values vs Capital
+    plt.figure()
 
     for i, sweep in enumerate(sweeps):
         label = "Sweep: " + str(sweep[0]+1)
         plt.step(capital, sweep[1][1: NUM_STATES-1], drawstyle='steps', label=label)
 
-
-    # plt.xlim(1, NUM_STATES-2)
     plt.xlabel("Capital")
     plt.ylabel("Values").set_rotation(0)
     plt.legend(loc='best')
     plt.show()
+
+
+    # Plot Final policy (stake) vs Capital
+    plt.figure()
+    plt.step(capital, policy[1: NUM_STATES-1], drawstyle='steps')
+    plt.xlabel("Capital")
+    plt.ylabel("Final Policy").set_rotation(0)
+    plt.show()
+
+
+
 
 
 
