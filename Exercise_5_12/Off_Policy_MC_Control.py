@@ -15,6 +15,7 @@ track[4:14, 0] = 1
 # track[0:6, cols-1] = 10
 # starting_line = (rows-1, slice(3,9))
 
+epsilon = 0.1
 
 def get_random_start_col():
     start_col_begin = 3
@@ -22,13 +23,44 @@ def get_random_start_col():
     new_col = np.random.randint(start_col_begin, start_col_end + 1)
     return new_col
 
+def get_state_index_from_row_col(row, col):
+    return row*cols + col
+
+def get_row_col_from_state_value(state_value):
+    row = state_value // cols
+    col = state_value % cols
+    return row, col
+
 actions = []
-a_set = [0, -1, 1]
-for horizontal_action in a_set:
-    for vertical_action in a_set:
-        actions.append([horizontal_action, vertical_action])
+for horizontal_increment in [0, -1, 1]:
+    for vertical_increment in [0, -1, 1]:
+        actions.append([horizontal_increment, vertical_increment])
+
+# row = states[i]// cols
+# col = states[i] % cols
+states = [i for i in range(rows*cols)]
+
+# Invalid state is a state_value whose (row,col) is not on the track (i.e. has track value of 0)
+invalid_states = set()
+
+for state_value in states:
+    row, col = get_row_col_from_state_value(state_value)
+    if track[row][col] == 0:
+        invalid_states.add(state_value)
 
 
+Q = np.zeros((len(states), len(actions)))
+C = np.zeros((len(states), len(actions)))
+
+
+# Initially since Q is all zero, we can greedily select target action for every state to be action index 0 (also breaks ties consistently)
+# target_policy[state_index] = action index of greedy action wrt Q
+target_policy = np.zeros(len(states))
+
+# Behavior policy will be e-soft policy to ensure convergence of target policy to optimal policy
+# behavior_policy[state_index][action_index] = probability of action at action index to be taken in state at state index
+epsilon_soft_probability = epsilon / len(actions)
+behavior_policy = np.full(shape=(len(states),len(actions)), fill_value=epsilon_soft_probability)
 
 MAX_VELOCITY = 5
 
@@ -38,7 +70,7 @@ the finish line (at col = 16) between rows 0 and 5 (inclusive)
 '''
 def crossed_finishline(row, col, new_row, new_col):
 
-    FINISH_LINE_COL = 16
+    FINISH_LINE_COL = cols-1
 
     x = col
     y = row
@@ -67,17 +99,24 @@ def crossed_boundary(new_row, new_col):
     return False
 
 
-def generate_episode(policy):
+# TODO: Update to take action with a certain probability from actions with probability given by policy
+def generate_episode(behavior_policy):
     vertical_velocity = 0
     horizontal_velocity = 0
     episode = []
     row = rows-1
     col = get_random_start_col()
 
-    while (True):
+    while True:
         reward = -1
+        state_index = get_state_index_from_row_col(row,col)
+        action_index = np.random.choice(a=actions, p=behavior_policy[state_index])
+
+        behavior_policy_vertical_increment = actions[action_index][0]
+        behavior_policy_horizontal_increment = actions[action_index][1]
+
         #                 state (t)  action (t)         reward (t+1)
-        episode.append( ( (row,col), policy[(row,col)] ,reward ) )
+        episode.append( ( state_index, action_index, reward ) )
 
         horizontal_increment = 0
         vertical_increment = 0
@@ -85,8 +124,8 @@ def generate_episode(policy):
             horizontal_increment = 0
             vertical_increment = 0
         else:
-            horizontal_increment = policy[(row,col)][0]
-            vertical_increment = policy[(row,col)][1]
+            horizontal_increment = behavior_policy_vertical_increment
+            vertical_increment = behavior_policy_horizontal_increment
 
         vertical_velocity = min(MAX_VELOCITY, vertical_velocity + vertical_increment)
         horizontal_velocity = min(MAX_VELOCITY, horizontal_velocity + horizontal_increment)
@@ -104,11 +143,12 @@ def generate_episode(policy):
             row = new_row
             col = new_col
 
-
     return episode
 
 
-
+if __name__ == "__main__":
+    # Initialize
+    print(actions)
 
 
 
