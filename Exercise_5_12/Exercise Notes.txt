@@ -1,0 +1,34 @@
+
+
+move up down left right per time step
+
+actions are increments to velocity components: +1, -1, 0
+
+(3x3) 9 total actions
+
+Velocity: 
+Can only be zero at the starting line
+[1, 5]
+
+start state is randoml;y selected with both velocity components zero
+Terminal state is crossing finish line
+
+Rewards: -1 each step until car crosses finish line
+
+If car hits boundary
+	its moved back to a random position on starting line
+	both velocity components <- 0
+	episode continues
+
+After we get action but before we update position at each time step, 
+check if new location will cross the track boundary or the finish line
+	then update based on what happened:
+		crossed boundary:
+			same as above
+		crossed finish line:
+			episode ends
+
+Noise: P = 0.1 at each timestep, velocity intended increments are both zero, independent of intended increments
+
+Use MC control (off policy) method to compute optimal policy from each starting state
+After we have the optimal policy, turnm off the noise and show several trajectories following optimal policy
