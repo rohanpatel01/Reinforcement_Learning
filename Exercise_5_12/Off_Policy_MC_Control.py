@@ -17,6 +17,12 @@ track[4:14, 0] = 1
 
 epsilon = 0.1
 
+# Changes probabilities of prob array such that they sum to 1 but their relative prob stay the same
+def fix_p( p):
+    if p.sum() != 1.0:
+        p = p*(1./p.sum())
+    return p
+
 def get_random_start_col():
     start_col_begin = 3
     start_col_end = 8
@@ -78,11 +84,16 @@ def crossed_finishline(row, col, new_row, new_col):
     x_new = new_col
     y_new = new_row
 
-    m = ((y_new - y) / (x_new - x))
+    m = None
+    if (x_new - x) == 0:
+        m = 0
+    else:
+        m = ((y_new - y) / (x_new - x))
+
     b = y_new - (m*x_new)
     y_intersect = (m*FINISH_LINE_COL) + b
 
-    if 0 <= y_intersect <= 5:
+    if (0 <= y_intersect <= 5) and ( FINISH_LINE_COL < x_new ):
         return True
     else:
         return False
@@ -110,7 +121,7 @@ def generate_episode(behavior_policy):
     while True:
         reward = -1
         state_index = get_state_index_from_row_col(row,col)
-        action_index = np.random.choice(a=actions, p=behavior_policy[state_index])
+        action_index = np.random.choice(a=[i for i in range(len(actions))], p=fix_p(behavior_policy[state_index]))
 
         behavior_policy_vertical_increment = actions[action_index][0]
         behavior_policy_horizontal_increment = actions[action_index][1]
@@ -127,13 +138,26 @@ def generate_episode(behavior_policy):
             horizontal_increment = behavior_policy_vertical_increment
             vertical_increment = behavior_policy_horizontal_increment
 
-        vertical_velocity = min(MAX_VELOCITY, vertical_velocity + vertical_increment)
-        horizontal_velocity = min(MAX_VELOCITY, horizontal_velocity + horizontal_increment)
+        vertical_velocity = max(-MAX_VELOCITY, min(MAX_VELOCITY, vertical_velocity + vertical_increment))
+        horizontal_velocity = max(-MAX_VELOCITY, min(MAX_VELOCITY, horizontal_velocity + horizontal_increment))
 
         new_row = row + vertical_velocity
         new_col = col + horizontal_velocity
 
         if crossed_finishline(row, col, new_row, new_col):
+            print("Crossed finish line: state:")
+            print("Row: ", row)
+            print("Col: ", col)
+            print("V_action: ", behavior_policy_vertical_increment)
+            print("H_action: ", behavior_policy_horizontal_increment)
+            print("vertical_velocity: ", vertical_velocity)
+            print("horizontal_velocity: ", horizontal_velocity)
+            print("vertical_increment: ", vertical_increment)
+            print("horizontal_increment: ", horizontal_increment)
+            print("new_row: ", new_row)
+            print("new_col: ", new_col)
+
+            # print("Crossed finish line: state:", row, ":", col, ":", action_index, ":", vertical_velocity, ":", horizontal_velocity, ":", horizontal_increment, ":", vertical_increment, "New row: ", new_row, ":", "New Col: ", new_col)
             break
 
         if crossed_boundary(new_row, new_col):
@@ -148,7 +172,10 @@ def generate_episode(behavior_policy):
 
 if __name__ == "__main__":
     # Initialize
-    print(actions)
+    print("Actions: ", actions)
+    episode = generate_episode(behavior_policy)
+    print("Len episode: ", len(episode))
+    print(episode)
 
 
 
