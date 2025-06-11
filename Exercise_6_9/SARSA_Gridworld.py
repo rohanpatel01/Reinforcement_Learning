@@ -1,8 +1,6 @@
 
 import numpy as np
 
-from Exercise_5_12.Toy_Test import vertical_increment, horizontal_increment
-
 # Indices for accessing elements of action
 VERTICAL_ACTION = 0
 HORIZONTAL_ACTION = 1
@@ -14,17 +12,17 @@ states = [s for s in range(NUM_ROWS*NUM_COLS)]
 
 # (vertical_action, horizontal_action)
 #             up     down    right   left
-actions = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+# actions = [(-1, 0), (1, 0), (0, 1), (0, -1)]
 
+# normal actions but now including diagonals
+actions = []
+for vertical in [0, -1, 1]:
+    for horizontal in [0, -1, 1]:
+        actions.append([vertical, horizontal])
+
+# actions.remove([0,0])
 print("Actions: \n", actions, end="\n\n")
 
-print("States: ")
-for row in range(NUM_ROWS):
-    for col in range(NUM_COLS):
-        print(states[row*NUM_COLS + col], end=" ")
-
-    print()
-print()
 
 wind = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
 # wind = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -123,6 +121,8 @@ def SARSA(step_size, gamma, epsilon, MAX_EPISODES):
 
 def visualize_deterministic_policy(policy):
 
+    print("Actions - ", len(actions), " total actions: ", actions)
+
     gridworld = np.zeros(shape=(NUM_ROWS, NUM_COLS))
 
     step = 1
@@ -152,7 +152,7 @@ def visualize_deterministic_policy(policy):
 
 def main():
 
-    MAX_EPISODES = 1e4
+    MAX_EPISODES = 1e5
 
     epsilon = 0.1
     step_size = 0.5
