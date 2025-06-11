@@ -42,17 +42,6 @@ for horizontal_increment in [0, -1, 1]:
 
 actions.remove([0,0])
 
-print(actions)
-
-# up = actions[6]
-# nothing = actions[0]
-# temp = up
-# actions[6] = nothing
-# actions[0] = up
-
-
-# row = states[i]// cols
-# col = states[i] % cols
 states = [i for i in range(rows*cols)]
 
 # Invalid state is a state_value whose (row,col) is not on the track (i.e. has track value of 0)
@@ -64,14 +53,13 @@ for state_value in states:
         invalid_states.add(state_value)
 
 
-
-
-
 MAX_VELOCITY = 5
 
 '''
 Simply using algebra to see if line segment created by path intersects
 the finish line (at col = 16) between rows 0 and 5 (inclusive)
+
+Also checking if the new column is past the finish line
 '''
 def crossed_finishline(row, col, new_row, new_col):
 
@@ -100,7 +88,7 @@ def crossed_finishline(row, col, new_row, new_col):
 
 def crossed_boundary(new_row, new_col):
 
-    if (((new_row<0) or (rows<=new_row)) or ((new_col<0) or (cols<=new_col))):
+    if ((new_row < 0) or (rows <= new_row)) or ((new_col < 0) or (cols <= new_col)):
         return True
 
     if track[new_row][new_col] == 0:
@@ -109,8 +97,8 @@ def crossed_boundary(new_row, new_col):
     return False
 
 
-# TODO: Update to take action with a certain probability from actions with probability given by policy
 def generate_episode(behavior_policy, noise):
+
     vertical_velocity = 0
     horizontal_velocity = 0
     episode = []
@@ -120,7 +108,7 @@ def generate_episode(behavior_policy, noise):
     while True:
         reward = -1
         state_index = get_state_index_from_row_col(row,col)
-        action_index = np.random.choice(a=[i for i in range(len(actions))], p=fix_p(behavior_policy[state_index]))  # TODO: Might not need to fix_p if we are using e-soft policy
+        action_index = np.random.choice(a=[i for i in range(len(actions))], p=fix_p(behavior_policy[state_index]))
 
         behavior_policy_vertical_increment = actions[action_index][0]
         behavior_policy_horizontal_increment = actions[action_index][1]
@@ -144,19 +132,6 @@ def generate_episode(behavior_policy, noise):
         new_col = col + horizontal_velocity
 
         if crossed_finishline(row, col, new_row, new_col):
-            # print("Crossed finish line: state:")
-            # print("Row: ", row)
-            # print("Col: ", col)
-            # print("V_action: ", behavior_policy_vertical_increment)
-            # print("H_action: ", behavior_policy_horizontal_increment)
-            # print("vertical_velocity: ", vertical_velocity)
-            # print("horizontal_velocity: ", horizontal_velocity)
-            # print("vertical_increment: ", vertical_increment)
-            # print("horizontal_increment: ", horizontal_increment)
-            # print("new_row: ", new_row)
-            # print("new_col: ", new_col)
-
-            # print("Crossed finish line: state:", row, ":", col, ":", action_index, ":", vertical_velocity, ":", horizontal_velocity, ":", horizontal_increment, ":", vertical_increment, "New row: ", new_row, ":", "New Col: ", new_col)
             break
 
         if crossed_boundary(new_row, new_col):
@@ -168,7 +143,7 @@ def generate_episode(behavior_policy, noise):
 
     return episode
 
-def off_policy_MC_control(epsilon, theta, gamma):
+def off_policy_MC_control(epsilon, gamma):
 
     Q = np.empty((len(states), len(actions)), dtype=float)
     for s in range(len(states)):
@@ -185,7 +160,7 @@ def off_policy_MC_control(epsilon, theta, gamma):
     ACTION_INDEX_IN_EPISODE = 1
     REWARD_INDEX_IN_EPISODE = 2
 
-    i = 0   # just for seeing progress
+    i = 0
 
     while i < num_episodes:
 
@@ -236,13 +211,11 @@ if __name__ == "__main__":
 
     num_episodes = 1e3
 
-    # Initialize
-    theta = 0.1
     gamma = 1
-    Q, C, target_policy = off_policy_MC_control(epsilon=0.1, theta=theta, gamma=gamma)  # 0.0 epsilon means 0 prob taking random action thus behavior policy will be greedy
+    Q, C, target_policy = off_policy_MC_control(epsilon=0.4, gamma=gamma)  # 0.0 epsilon means 0 prob taking random action thus behavior policy will be greedy
+
 
     print("Actions: ", actions)
-
     print("Off-policy MC control complete")
     print("Q(S,A)")
     for s in range(len(states)):
