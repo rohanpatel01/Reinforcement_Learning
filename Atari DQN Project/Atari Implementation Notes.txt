@@ -1,0 +1,81 @@
+Atari Implementation Notes
+
+Keep a file for global hyper parameters that holds
+- learning_freq
+
+Input is 4 frames that are preprocessed: (80x80x4)
+During training, decreases e from 1 to 0.1 in first million steps, keep at 0.1 beyond
+
+During test, keep e soft  0.05
+
+Update w every learning_freq steps
+- use a minibatch of experiences from replay buffer to perform SGD
+
+
+
+
+
+
+Implementation Notes
+env handles the step and returns the new_state, reward, done (true if next_state is terminal I believe)
+
+
+
+
+
+
+
+where are they implementing Q learning?
+core/q_learning.py
+* This is where the actual loop and experience replay and stuff like that is happening
+* They use functions here that are meant to be overwritten by classes that inherit from Q learning
+
+
+
+
+How do they get the Q values? 
+- getting Q values is left for super class to implement
+(self.get_best_acton(q_input)) will return the best action along with the q_values for the input (which I assume are the Q values for all the actions in the given state)
+
+
+
+
+
+so far it seems that we have functions that are general enough to apply to most cases of Q learning. Then the functions like update Q or get Q, which may be specific to the implementation (tabular vs approximate) of the actual Q values can be overwritten and used however they wish
+
+
+
+Structure of inheritance
+Linear (Linear approximation)
+DQN
+Q learning
+
+
+Thus here it looks like Q learning lays a basic foundation for DQN which also provides a foundation for whatever other class that can define how the Q values are tabulated/approximated via their own custom NN 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
