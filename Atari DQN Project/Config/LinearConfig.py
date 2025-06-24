@@ -10,3 +10,5 @@ class LinearConfig:
     max_time_steps_update_epsilon = 1e6
     num_episodes = 1e3
     gamma = 1
+    learning_start = 200
+    target_weight_update_freq = 4

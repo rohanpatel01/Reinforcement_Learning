@@ -1,0 +1,40 @@
+
+We know that x is the raw pixels.
+so φt represents the preprocessed and stacked last 4 (k) frames of history
+
+Therefore: Q maps history-action pairs to scalar estimates of their Q-value
+- drawback of this is that now to get Q value of each action, we must make a seperate forward pass
+- but to counteract this drawback, we instead use a network architecture
+in which there is a separate output unit for each possible action. 
+
+Output of Q network corresponds to the predicted Q-values of the individual actions for the input state.
+
+
+Question
+Does this mean when we iterate we start at t = k?
+Does this also mean that we only perform the contents of the inner loop every k iterations (or every k time steps)?
+They say we learn from every 4 time
+
+Answer: I dont think so. Since the input to the Q function is 4 (k) stacked frames, and that we choose an action based on that state then inherently we are choosing an action after every 4 (k) frames.
+
+
+φj+1 : is the preprocessing of the last 4 frames of a history and stacking them to produce the input to the Q-function
+- in beginning since we only have one frame will it be 
+*** I assume they are being stacked in this order: 
+0: t-3 
+1: t-2
+2: t-1
+3: t
+
+
+Just sample one experience from replay memory to perform SGD
+Replay buffer may hold "last million episodes" or something similar
+- last million episodes seems like a massive number of timesteps
+N is the number of experience tuples we store in replay buffer
+
+
+
+
+
+
+
