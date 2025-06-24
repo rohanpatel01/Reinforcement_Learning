@@ -1,14 +1,17 @@
 
 import numpy as np
+import torch
 
 class ReplayBuffer:
-    def __init__(self, state_shape, size, env):
+    def __init__(self, state_shape, size, env, config):
         self.size = size
-        self.__MAX_SIZE = 1e6
+        self.config = config
+        self.__MAX_SIZE = self.config.replay_buffer_size
         self.__next_replay_location = 0
-        self.__state_buffer = np.zeros(shape=(*state_shape, self.__MAX_SIZE))
+        self.__state_buffer = np.zeros(shape=(self.__MAX_SIZE, *state_shape))
+        print("state buffer shape: ", self.__state_buffer.shape)
         self.__next_index = 0                        # always points to one more than the most recent index of experience
-        self.__replay_buffer = list()           # stores tuples of experiences where each state in the tuple is a stack of the previous 4 states (including that current state in the stack)
+        self.replay_buffer = list()           # stores tuples of experiences where each state in the tuple is a stack of the previous 4 states (including that current state in the stack)
         self.env = env
     # replay buffer handles concatenating last k frames together
 
@@ -19,13 +22,15 @@ class ReplayBuffer:
 
         self.__state_buffer[self.__next_index] = state
         self.__next_index += 1
-        stacked_state = np.concatenate([self.__state_buffer[ (self.__next_index-1 - i) % self.__MAX_SIZE ] for i in range(self.env.frame_stack_size)])
+        stacked_state = torch.from_numpy(np.concatenate([self.__state_buffer[ (self.__next_index-1 - i) % self.__MAX_SIZE ] for i in range(self.config.frame_stack_size)]))
 
         self.__state_buffer[self.__next_index] = next_state
         self.__next_index += 1
-        stacked_next_state = np.concatenate([self.__state_buffer[ (self.__next_index-1 - i) % self.__MAX_SIZE ] for i in range(self.env.frame_stack_size)])
+        stacked_next_state = torch.from_numpy(np.concatenate([self.__state_buffer[ (self.__next_index-1 - i) % self.__MAX_SIZE ] for i in range(self.config.frame_stack_size)]))
 
-        self.__replay_buffer.append((stacked_state, action, reward, stacked_next_state))
+        self.replay_buffer.append((stacked_state, action, reward, stacked_next_state, done))
+
+
 
     def sample_minibatch(self):
         """
@@ -34,3 +39,5 @@ class ReplayBuffer:
 
         """
         raise NotImplementedError
+
+

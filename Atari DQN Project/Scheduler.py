@@ -16,6 +16,8 @@ class EpsilonScheduler:
         else:
             self.epsilon = self.end_epsilon
 
+        return self.epsilon
+
 
     def reset(self):
         self.epsilon = self.begin_epsilon
