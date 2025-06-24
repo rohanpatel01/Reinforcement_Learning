@@ -31,9 +31,6 @@ class Q_learning(object):
         # builds and initializes the NN that will be used for function approximation for Q values
         pass
 
-    def get_initial_state(self, env):
-        raise NotImplementedError
-
     def sample_action(self, env, state, epsilon):
         # sample an action with e-greedy policy given by input parameter
         raise NotImplementedError
@@ -68,47 +65,30 @@ class Q_learning(object):
         # replace target weights with that of the current network's weights
         raise NotImplementedError
 
-    # Necessary for Atari
-    def store_sequence(self, state_sequence, preprocessed_sequence, state, action, next_state):
-        state_sequence.append((state_sequence[-1], action, next_state))
-        preprocessed_sequence.append(self.preprocess(state_sequence[-1]))
 
     def train(self):
 
         for episode in range(self.config.num_episodes):
 
-            state = self.get_initial_state(self, self.env)
+            state = self.env.reset()
             epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                                  self.config.max_time_steps_update_epsilon)
-
-            # Used in Atari env
-            state_sequence = [(state)]
-            preprocessed_sequence = [(self.preprocess(state))]
 
             while not self.env.done:
 
                 action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.time))
                 next_state, reward = self.env.take_action(state, action)
 
-                # self.store_sequence(state_sequence, preprocessed_sequence, state, action, next_state)
-
-                # TODO: figure out how we can abstract this so it can generally store a state
-                # Figure out where and how the Atari implementation for preprocessing should be implemented
-                # Should it be done in ReplayBuffer or should we do it in the super class
-
-                # TODO: Think about doing this below idea
-                # IDEA! : We have a function that is optionally implemented (pass) that can preprocess the state and next state
-                #           before we pass it into the one general function: ReplayBuffer.store(...)
-                self.replay_buffer.store((preprocessed_sequence[-2], action, reward, preprocessed_sequence[-1], self.env.done))
+                self.replay_buffer.store(state, action, reward, next_state, self.env.done)
 
                 if (self.time > self.config.learning_start) and (self.time % self.config.learning_freq == 0):
                     minibatch = self.replay_buffer.sample_minibatch()
-                    for preprocessed_state, action, reward, preprocessed_next_state, done in minibatch:
+                    for state, action, reward, next_state, done in minibatch:
                         if done:
                             y = reward
                         else:
-                            best_action = self.get_best_action(preprocessed_next_state, 'target')
-                            y = reward + (self.env.gamma * self.get_Q_value(self, preprocessed_next_state, best_action, 'target'))
+                            best_action = self.get_best_action(next_state, 'target')
+                            y = reward + (self.env.gamma * self.get_Q_value(self, next_state, best_action, 'target'))
 
                         # TODO: Figure out this part
                         self.perform_gradient_descent()
@@ -122,7 +102,7 @@ class Q_learning(object):
                 # done with current time step
 
             # done with episode
-            self.env.reset()
+
 
 
 

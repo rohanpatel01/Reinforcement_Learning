@@ -45,6 +45,8 @@ class TestEnv:
         self.current_time = 0
         self.done = False
 
+        return self.state
+
 
 def environmentTest():
 

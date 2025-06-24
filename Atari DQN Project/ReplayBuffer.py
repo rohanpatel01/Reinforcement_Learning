@@ -2,24 +2,30 @@
 import numpy as np
 
 class ReplayBuffer:
-    def __init__(self, size):
+    def __init__(self, state_shape, size, env):
         self.size = size
         self.__MAX_SIZE = 1e6
         self.__next_replay_location = 0
-        self.__replay_buffer = list()           # stores tuples of experiences that are preprocessed
+        self.__state_buffer = np.zeros(shape=(*state_shape, self.__MAX_SIZE))
+        self.__next_index = 0                        # always points to one more than the most recent index of experience
+        self.__replay_buffer = list()           # stores tuples of experiences where each state in the tuple is a stack of the previous 4 states (including that current state in the stack)
+        self.env = env
+    # replay buffer handles concatenating last k frames together
 
     def store(self, experience_tuple):
+        # Note: preprocessing of pixels happens within the environment before we get the state.
+        # So state already has the pre-processing applied and here we just need to stack the last 4 states we got from each then store that as an experience
+        state, action, reward, next_state, done = experience_tuple
 
-        """
-        TODO
-            Note: Experience_tuple is: preprocessed state t, At, Rt, preprocessed next state T+1
+        self.__state_buffer[self.__next_index] = state
+        self.__next_index += 1
+        stacked_state = np.concatenate([self.__state_buffer[ (self.__next_index-1 - i) % self.__MAX_SIZE ] for i in range(self.env.frame_stack_size)])
 
-            make sure to place new tuple in correct location - accounting for replacement of newest
-            then need to store in D as (preprocessed t, At, Rt, next preprocessed t)
+        self.__state_buffer[self.__next_index] = next_state
+        self.__next_index += 1
+        stacked_next_state = np.concatenate([self.__state_buffer[ (self.__next_index-1 - i) % self.__MAX_SIZE ] for i in range(self.env.frame_stack_size)])
 
-        """
-        raise NotImplementedError
-
+        self.__replay_buffer.append((stacked_state, action, reward, stacked_next_state))
 
     def sample_minibatch(self):
         """
