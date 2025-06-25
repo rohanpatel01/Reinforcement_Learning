@@ -3,7 +3,7 @@
 class LinearConfig:
 
     learning_freq = 4
-    minibatch_size = 10
+    minibatch_size = 5
     replay_buffer_size = int(1e2)
     begin_epsilon = 1
     end_epsilon = 0.1

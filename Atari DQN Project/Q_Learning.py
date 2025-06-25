@@ -40,7 +40,7 @@ class Q_Learning:
         raise NotImplementedError
 
     # TODO: May need some input parameters such as loss or something - figure this out when the time comes
-    def perform_gradient_descent(self):
+    def perform_gradient_descent(self, state, action, target):
         # TODO: figure out if we need autograd here and how it works / what we need to do here to get it working
         # in order to update weights based on the loss
         raise NotImplementedError
@@ -75,15 +75,17 @@ class Q_Learning:
                         if done:
                             y = reward
                         else:
-                            best_action = self.get_best_action(next_state, 'target')
-                            y = reward + (self.env.gamma * self.get_Q_value(self, next_state, best_action, 'target'))
+                            best_action = self.get_best_action(next_state, "target")
+                            y = reward + (self.env.gamma * self.get_Q_value(self, next_state, best_action, "target"))
 
                         # TODO: Figure out this part
-                        self.perform_gradient_descent()
+                        self.perform_gradient_descent(state, action, target=y)
 
                 # perform updates for end of time step
                 self.time += 1
                 epsilon_scheduler.update_epsilon(self.time)
+                # TODO: here is where we would update the learning rate
+                # Something like: scheduler.step() where scheduler = scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
                 if (self.time > self.config.learning_start) and (self.time % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
 

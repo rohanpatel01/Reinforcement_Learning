@@ -33,11 +33,30 @@ class ReplayBuffer:
 
 
     def sample_minibatch(self):
-        """
-        TODO
-            need to sample random tuples from
 
-        """
-        raise NotImplementedError
+        minibatch = []
+
+        for i in range(self.config.minibatch_size):
+            minibatch.append( self.replay_buffer[ np.random.randint( len(self.replay_buffer) ) ] )
+
+        return minibatch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
