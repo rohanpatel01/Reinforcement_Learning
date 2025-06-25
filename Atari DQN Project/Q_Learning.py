@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 # This will be a general class to implement Q_learning with the following params to make it flexible
 '''
@@ -54,36 +55,41 @@ class Q_Learning:
         # I think this can be optional
         pass
 
+    def monitor_performance(self):
+        pass
+
     def train(self):
 
         for episode in range(self.config.num_episodes):
-
+            print("Episode: ", episode + 1)
             state = self.env.reset()
             epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                                  self.config.max_time_steps_update_epsilon)
 
             while not self.env.done:
 
-                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.time))
+                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.time), "approx")
                 next_state, reward = self.env.take_action(state, action)
-
-                self.replay_buffer.store(state, action, reward, next_state, self.env.done)
+                experience_tuple = (state, action, reward, next_state, self.env.done)
+                self.replay_buffer.store(experience_tuple)
 
                 if (self.time > self.config.learning_start) and (self.time % self.config.learning_freq == 0):
+
                     minibatch = self.replay_buffer.sample_minibatch()
-                    for state, action, reward, next_state, done in minibatch:
-                        if done:
-                            y = reward
+
+                    for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
+                        if done_mini:
+                            y = torch.tensor(reward_mini, dtype=torch.double)
                         else:
-                            best_action = self.get_best_action(next_state, "target")
-                            y = reward + (self.env.gamma * self.get_Q_value(self, next_state, best_action, "target"))
+                            best_action = self.get_best_action(next_state_mini, "target")
+                            y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target"))
 
-                        # TODO: Figure out this part
-                        self.perform_gradient_descent(state, action, target=y)
+                        self.perform_gradient_descent(state_mini, action_mini, target=y)
 
+                self.monitor_performance()
                 # perform updates for end of time step
                 self.time += 1
-                epsilon_scheduler.update_epsilon(self.time)
+                # epsilon_scheduler.update_epsilon(self.time) # not necessary because we get epsilon by computing it from the time
                 # TODO: here is where we would update the learning rate
                 # Something like: scheduler.step() where scheduler = scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
                 if (self.time > self.config.learning_start) and (self.time % self.config.target_weight_update_freq == 0):

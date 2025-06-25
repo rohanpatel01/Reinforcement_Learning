@@ -18,6 +18,7 @@ class ReplayBuffer:
     def store(self, experience_tuple):
         # Note: preprocessing of pixels happens within the environment before we get the state.
         # So state already has the pre-processing applied and here we just need to stack the last 4 states we got from each then store that as an experience
+
         state, action, reward, next_state, done = experience_tuple
 
         self.__state_buffer[self.__next_index] = state

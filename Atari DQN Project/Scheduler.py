@@ -30,13 +30,13 @@ class LearningRateScheduler:
         pass
 
 
-
-def epsilon_scheduler_test():
-    e_scheduler = EpsilonScheduler(1, 0.1, 1e6)
-    e_scheduler.update_epsilon(0)
-    print(e_scheduler.epsilon)
+# Out of date
+# def epsilon_scheduler_test():
+#     e_scheduler = EpsilonScheduler(1, 0.1, 1e6)
+#     e_scheduler.update_epsilon(0)
+#     print(e_scheduler.epsilon)
 
 
 if __name__ == '__main__':
-    epsilon_scheduler_test()
+    # epsilon_scheduler_test()
     pass

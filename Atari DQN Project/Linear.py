@@ -37,7 +37,8 @@ class Linear(Q_Learning):
         elif network_name == "approx":
             Q_actions = self.approx_network.forward(state)
 
-        return Q_actions[int(action.numpy())]
+        # action here is an int and not a tensor so we don't need to convert it
+        return Q_actions[action] # int(action.numpy())
 
     # Returns index of action in action space with highest Q value
     def get_best_action(self, state, network_name) -> int:
@@ -55,13 +56,20 @@ class Linear(Q_Learning):
 
         # TODO implement learning rate scheduler with Adam here
         # maybe something like this?     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
-        optimizer = optim.Adam(self.approx_network.parameters(), lr=0.1)
+        optimizer = optim.Adam(self.approx_network.parameters(), lr=0.05) # TODO move outside so we don't need to initialize every time
         optimizer.zero_grad()
 
         output = self.get_Q_value(state, action, "approx")
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
+
+    def monitor_performance(self):
+        # get the Q values for the state we want to observe and plot them over time
+        state_track = torch.tensor([1, 2, 3, 0], dtype=torch.double)
+        best_action = self.get_best_action(state_track, "approx")
+        q_best_action = self.get_Q_value(state_track, best_action, "approx")
+        print(q_best_action)
 
 
     def set_target_weights(self):
@@ -217,14 +225,15 @@ def minibatch_test():
 def gradient_descent_test():
     # Objective of this test is just to see the weights changing
     # track the Q value of optimal path state for Test Env
+    env = TestEnv()
+    config = LinearConfig
+    model = Linear(env, config)
 
     # s=[]    a=0    next_s = [1,2,3,1]  done=True
-    state_track = torch.tensor([1,2,3,0], dtype=torch.float64)
-    action_track = torch.tensor(1., dtype=torch.float64)
+    state_track = torch.tensor([1,2,3,0], dtype=torch.double)
+    action_track = torch.tensor(1., dtype=torch.double)
 
-
-
-    pass
+    output = model.get_Q_value(state_track, action_track, "approx")
 
 
 
@@ -234,8 +243,15 @@ def main():
     # get_best_action_test()
     # sample_action_test()
     # set_target_weights_test()
-    minibatch_test()
+    # minibatch_test()
     # gradient_descent_test()
+    print("Starting Training")
+    env = TestEnv()
+    config = LinearConfig
+    model = Linear(env, config)
+    model.train()
+    print("Done")
+
 
 
     pass
