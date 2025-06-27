@@ -12,8 +12,6 @@ class TestEnv:
         self.numActions = 5
         self.state_shape = np.array([1])
 
-        # self.states = torch.from_numpy(np.array([i for i in range(self.numStates)], dtype=float))
-        # self.actions = torch.from_numpy(np.array([i for i in range(self.numActions)], dtype=float))
         self.states = [i for i in range(self.numStates)]
         self.actions = [i for i in range(self.numActions)]
 
@@ -26,22 +24,20 @@ class TestEnv:
 
     def take_action(self, state, action) -> (int, int):
 
-        assert(type(state) != torch.tensor)
         assert(self.done == False)
-        # assert(0 <= state <= len(self.states))
+        assert(type(state) == torch.Tensor)
+        assert(type(action) == int)
         assert(0 <= action <= len(self.actions))
 
-        next_state = None
-        reward = None
+        state = int(state.numpy())
+        assert(0 <= state <= len(self.states))
 
         if action == 4:
-            next_state = state           #int(state.numpy())
+            next_state = state
         else:
             next_state = action
 
-        # int(next_state.numpy())
-        reward = self.rewards[next_state]       # Here I make assumption that we only need to get reward for state based on last state in stack
-                                                    # this may cause problems for the test environment I think - but might not be an issue if we visit all s,a infinitely often
+        reward = self.rewards[next_state]
 
         if state == 2:
             reward *= -10
@@ -50,11 +46,12 @@ class TestEnv:
         if self.current_time >= self.MAX_TIME_STEPS:
             self.done = True
 
-        return next_state, reward
+        return torch.tensor([next_state], dtype=torch.double), reward
+
 
 
     def reset(self):
-        self.state = 0
+        self.state = torch.tensor([0], dtype=torch.double)
         self.current_time = 0
         self.done = False
 
@@ -68,10 +65,11 @@ def environmentTest():
     test_env = TestEnv()
     for s in test_env.states:
         for a in test_env.actions:
+            s = torch.tensor(s, dtype=torch.double)
 
             next_state, reward = test_env.take_action(s, a)
 
-            print(s, "\t\t", a, "\t\t", next_state, "\t\t\t", reward)
+            print(int(s.numpy()), "\t\t", a, "\t\t", int(next_state.numpy()), "\t\t\t", reward)
 
 
 

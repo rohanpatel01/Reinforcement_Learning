@@ -44,7 +44,7 @@ class Q_Learning:
     def perform_gradient_descent(self, state, action, target):
         # TODO: figure out if we need autograd here and how it works / what we need to do here to get it working
         # in order to update weights based on the loss
-        raise NotImplementedError
+        pass
 
     def set_target_weights(self):
         # replace target weights with that of the current network's weights
@@ -58,16 +58,20 @@ class Q_Learning:
     def monitor_performance(self):
         pass
 
+    def post_minibatch_updates(self):
+        pass
+
     def train(self):
 
+        epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
+                                             self.config.max_time_steps_update_epsilon)
+
         for episode in range(self.config.num_episodes):
-            print("Episode: ", episode + 1)
+            print("Episode: ", episode + 1, "Time: ", self.time, " Epsilon: ", epsilon_scheduler.get_epsilon(self.time))
+
             state = self.env.reset()
-            epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
-                                                 self.config.max_time_steps_update_epsilon)
 
             while not self.env.done:
-
                 action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.time), "approx")
                 next_state, reward = self.env.take_action(state, action)
                 experience_tuple = (state, action, reward, next_state, self.env.done)
@@ -82,14 +86,14 @@ class Q_Learning:
                             y = torch.tensor(reward_mini, dtype=torch.double)
                         else:
                             best_action = self.get_best_action(next_state_mini, "target")
-                            y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target"))
+                            # Important note: .detach below is necessary to prevent pytorch from doing backprop through the target network
+                            y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach())
 
-                        self.perform_gradient_descent(state_mini, action_mini, target=y)
+                        self.perform_gradient_descent(state_mini, action_mini, target=y, timestep=self.time)
 
-                self.monitor_performance()
-                # perform updates for end of time step
+                self.post_minibatch_updates()
+                self.monitor_performance(self.env, timestep=self.time)
                 self.time += 1
-                # epsilon_scheduler.update_epsilon(self.time) # not necessary because we get epsilon by computing it from the time
                 # TODO: here is where we would update the learning rate
                 # Something like: scheduler.step() where scheduler = scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
                 if (self.time > self.config.learning_start) and (self.time % self.config.target_weight_update_freq == 0):
@@ -97,8 +101,4 @@ class Q_Learning:
 
                 # done with current time step
             # done with episode
-
-
-
-
 

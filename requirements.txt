@@ -4,3 +4,4 @@ seaborn
 tqdm
 gymnasium
 scipy
+standard-imghdr

@@ -23,20 +23,5 @@ class EpsilonScheduler:
         self.epsilon = self.begin_epsilon
 
 
-
-# TODO: Implement this class when needed
-class LearningRateScheduler:
-    def __init__(self):
-        pass
-
-
-# Out of date
-# def epsilon_scheduler_test():
-#     e_scheduler = EpsilonScheduler(1, 0.1, 1e6)
-#     e_scheduler.update_epsilon(0)
-#     print(e_scheduler.epsilon)
-
-
 if __name__ == '__main__':
-    # epsilon_scheduler_test()
     pass
