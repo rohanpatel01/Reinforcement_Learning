@@ -3,3 +3,4 @@
 *.pyc
 Resources/*
 .idea/*
+Atari DQN Project/runs/*

@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from Q_Learning import Q_Learning
 from TestEnv import TestEnv
 from DummyEnv import DummyEnv
+from SimpleEnv import SimpleEnv
 from Config.LinearConfig import LinearConfig
 from Scheduler import EpsilonScheduler
 
@@ -65,6 +66,19 @@ class Linear(Q_Learning):
         writer.add_scalar("Loss/train", loss.item(), timestep)
         self.approx_network.optimizer.zero_grad()
         loss.backward()
+
+        # print("Gradients for fc1 layer:")
+        # for name, param in self.approx_network.fc1.named_parameters():
+        #     if param.grad is not None:
+        #         print(f"  Parameter: {name}")
+        #         print(f"    Gradient shape: {param.grad.shape}")
+        #         print(f"    Gradient values (first 5): {param.grad.flatten()[:5]}")
+        #         print(f"    Gradient mean: {param.grad.mean().item():.6f}")
+        #         print("-" * 20)
+        #     else:
+        #         print(f"  Parameter: {name} has no gradient (check if requires_grad=True or if backward was called)")
+        #         print("-" * 20)
+
         self.approx_network.optimizer.step()
 
     def post_minibatch_updates(self):
@@ -83,7 +97,7 @@ class Linear(Q_Learning):
         count = 0
         sum = 0
         for state in env.states:
-            for action in env.actions:
+            for action in range(env.numActions):
                 state = torch.tensor([state], dtype=torch.double).detach()
                 sum += self.get_Q_value(state, action, "approx").detach()
                 count += 1
@@ -105,7 +119,6 @@ class LinearNN(nn.Module):
         self.env = env
         self.config = config
         self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
-        self.reLU = nn.ReLU()
         self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
@@ -130,12 +143,9 @@ def summary(model, env):
     print("State\tAction\tNext State\tReward")
 
     for state in env.states:
-        for action in env.actions:
+        for action in range(len(env.actions)):
             state = torch.tensor([state], dtype=torch.double)
             print(int(state[0].numpy()), "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))
-
-
-
 
     print("==============================================")
     print()
@@ -167,10 +177,22 @@ def summary(model, env):
 
         print("State: ", s, " Action: ", a, " Reward Received: ", r)
 
+    print()
     print("Total Reward Received: ", sum(rewards_received))
 
 
+
+
+    print("Taking a look at model parameters to see if weights are changing")
     print(model.approx_network.fc1.weight)
+    print(model.approx_network.fc1.bias)
+    # print("Parameters: ", list(model.approx_network.parameters()))
+    #
+    # print()
+    # print("Gradients: ", list())
+
+
+
 
 def q_value_test():
     env = TestEnv()
@@ -328,18 +350,38 @@ def main():
     print("Starting Training")
     # env = TestEnv()
     env = DummyEnv()
+    # env = SimpleEnv()
+
     config = LinearConfig
     model = Linear(env, config)
+
+    print("=================================================")
+    print("Summary BEFORE training")
+    summary(model, env)
+    print("=================================================")
+    print()
+
+
     model.train()
     writer.flush()
     writer.close()
     print("Done Training")
 
     # Get summary of best trajectory
+    print("Summary AFTER training")
     summary(model, env)
 
 
 
 if __name__ == '__main__':
-    main()
+    for i in range(3):
+        print()
+        print()
+        print()
+        print("Test ", i + 1)
+        main()
+        print()
+        print()
+        print()
+
 

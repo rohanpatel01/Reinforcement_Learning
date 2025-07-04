@@ -1,5 +1,26 @@
 Atari Implementation Notes
 
+I encountered the deadly triad
+
+When gamma = 0 (thus removing bootstrapping), the NN converges. Which means the oscillation is due to the deadly triad.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Keep a file for global hyper parameters that holds
 - learning_freq
 
@@ -13,16 +34,8 @@ Update w every learning_freq steps
 
 
 
-
-
-
 Implementation Notes
 env handles the step and returns the new_state, reward, done (true if next_state is terminal I believe)
-
-
-
-
-
 
 
 where are they implementing Q learning?

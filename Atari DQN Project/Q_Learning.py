@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from tqdm import tqdm
 
 # This will be a general class to implement Q_learning with the following params to make it flexible
 '''
@@ -67,7 +68,7 @@ class Q_Learning:
                                              self.config.max_time_steps_update_epsilon)
 
         for episode in range(self.config.num_episodes):
-            print("Episode: ", episode + 1, "Time: ", self.time, " Epsilon: ", epsilon_scheduler.get_epsilon(self.time))
+            # print("Episode: ", episode + 1, "Time: ", self.time, " Epsilon: ", epsilon_scheduler.get_epsilon(self.time))
 
             state = self.env.reset()
 
@@ -76,6 +77,7 @@ class Q_Learning:
                 next_state, reward = self.env.take_action(state, action)
                 experience_tuple = (state, action, reward, next_state, self.env.done)
                 self.replay_buffer.store(experience_tuple)
+                state = next_state
 
                 if (self.time > self.config.learning_start) and (self.time % self.config.learning_freq == 0):
 
