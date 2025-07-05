@@ -361,7 +361,6 @@ def objective(trial):
     # env = DummyEnv()
     # env = SimpleEnv()
     env = TestEnv()
-
     model = Linear(env, config)
     model.train()
     writer.flush()
@@ -375,8 +374,8 @@ def objective(trial):
 if __name__ == '__main__':
 
     storage_url = "sqlite:///db.sqlite3"
-    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials", load_if_exists=True)
-    study.optimize(objective, n_trials=70)
+    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials")
+    study.optimize(objective, n_trials=140)
 
     print("Best Params: ", study.best_params)
     print("Optimization complete. Data saved to:", storage_url)
