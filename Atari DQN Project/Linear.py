@@ -10,6 +10,9 @@ from DummyEnv import DummyEnv
 from SimpleEnv import SimpleEnv
 from Config.LinearConfig import LinearConfig
 from Scheduler import EpsilonScheduler
+import optuna
+from optuna_dashboard import run_server
+
 
 writer = SummaryWriter()
 
@@ -57,15 +60,16 @@ class Linear(Q_Learning):
         return best_action_index.item()
         # return int(best_action_index.numpy())
 
-    def perform_gradient_descent(self, state, action, target, timestep):
-        # TODO implement learning rate scheduler with Adam here
-        # maybe something like this?     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+    def perform_gradient_descent(self, state, action, config, target, timestep):
         output = self.get_Q_value(state, action, "approx")
         loss = self.approx_network.criterion(output, target)
-        # print(f"Logging loss: {loss.item()} at timestep {timestep}")
+
         writer.add_scalar("Loss/train", loss.item(), timestep)
         self.approx_network.optimizer.zero_grad()
         loss.backward()
+
+        if self.config.grad_clip:
+            torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
 
         # print("Gradients for fc1 layer:")
         # for name, param in self.approx_network.fc1.named_parameters():
@@ -80,10 +84,7 @@ class Linear(Q_Learning):
         #         print("-" * 20)
 
         self.approx_network.optimizer.step()
-
-    def post_minibatch_updates(self):
-        # self.approx_network.scheduler.step()
-        pass
+        self.approx_network.scheduler.step()
 
     def monitor_performance(self, env, timestep):
         # state_track = torch.tensor([0], dtype=torch.double)
@@ -113,19 +114,30 @@ class Linear(Q_Learning):
 
 
 class LinearNN(nn.Module):
+
+    def linear_decay(self, current_step):
+        if current_step >= self.config.lr_n_steps:
+            return self.config.lr_end / self.config.lr_begin
+        return 1.0 - (current_step / self.config.lr_n_steps) * (1 - self.config.lr_end / self.config.lr_begin)
+
     def __init__(self, env, config):
         # torch.manual_seed(42)
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
         self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
+        optimistic_bias = 2.0  # Try tuning this (e.g., 5.0, 10.0)
+        nn.init.constant_(self.fc1.bias, optimistic_bias)
+
         self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
         # gamma = (self.config.lr_end / self.config.lr_begin) ** (self.config.nsteps_train / self.config.step_size)
-        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self.config.step_size, gamma=gamma)
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
         self.criterion = nn.MSELoss()
         print("layer weights: ", self.fc1.weight)
+
+
 
     def forward(self, x):
         x = self.fc1(x)
@@ -180,16 +192,15 @@ def summary(model, env, config):
     print()
     print("Total Reward Received: ", sum(rewards_received))
 
-    print("Taking a look at model parameters to see if weights are changing")
-    print(model.approx_network.fc1.weight)
-    print(model.approx_network.fc1.bias)
+    # print("Taking a look at model parameters to see if weights are changing")
+    # print(model.approx_network.fc1.weight)
+    # print(model.approx_network.fc1.bias)
+    #
+    # print("Configs:")
+    # print("Num nsteps_train: ", config.nsteps_train)
+    # print()
 
-    print("Configs:")
-    print("Num episodes: ", config.num_episodes)
-    print("Num nsteps_train %: ", config.nsteps_train / config.num_episodes)
-    print()
-
-
+    return sum(rewards_received)            # rewards from the best possible trajectory
 
 
 def q_value_test():
@@ -338,58 +349,38 @@ def gradient_descent_test():
 
 
 
-def main():
-    # q_value_test()
-    # get_best_action_test()
-    # sample_action_test()
-    # set_target_weights_test()
-    # minibatch_test()
-    # gradient_descent_test()
+def objective(trial):
+    config = LinearConfig(
+        nsteps_train = trial.suggest_categorical("nsteps_train", [1000, 1500, 2000, 2500, 3000]),
+        lr_begin = trial.suggest_categorical("lr_begin", [0.0005, 0.001 ] ),   # low=0.0005, high=0.001, step=0.0005
+        epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
+    )
+
     print("Starting Training")
+
     # env = DummyEnv()
     # env = SimpleEnv()
-
-    # need to perform some hyperparameter search
     env = TestEnv()
-    config = LinearConfig
 
-    # best_reward = float('-inf')
-    # best_n_episodes = -1
-    # best_n_steps = -1
+    model = Linear(env, config)
+    model.train()
+    writer.flush()
+    writer.close()
 
-    # orig = config.nsteps_train
-    # for n_episodes in config.num_episodes:
-    #     for nsteps in config.nsteps_train:
-    #
-    #         config.num_episodes = n_episodes
-    #         config.nsteps_train = config.num_episodes * nsteps
-    #         config.max_time_steps_update_epsilon = config.nsteps_train
-
-    for i in range(10):
-        model = Linear(env, config)
-        model.train()
-        writer.flush()
-        writer.close()
-
-        print("Summary AFTER training")
-        summary(model, env, config)
-
-        #     if total_reward > best_reward:
-        #         best_reward = total_reward
-        #         best_n_episodes = n_episodes
-        #         best_n_steps = (config.nsteps_train / config.num_episodes)
-        #
-        # config.nsteps_train = orig
-
-    # print("Best Reward: ", best_reward)
-    # print("Best n_episodes: ", best_n_episodes)
-    # print("Best n_steps: ", best_n_steps)
+    print("Summary AFTER training")
+    return summary(model, env, config)
 
 
 
 if __name__ == '__main__':
 
+    storage_url = "sqlite:///db.sqlite3"
+    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials", load_if_exists=True)
+    study.optimize(objective, n_trials=70)
 
-    main()
+    print("Best Params: ", study.best_params)
+    print("Optimization complete. Data saved to:", storage_url)
+
+
 
 

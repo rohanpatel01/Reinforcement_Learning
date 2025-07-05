@@ -28,7 +28,7 @@ class Q_Learning:
         self.env = env
         self.config = config
         self.replay_buffer = ReplayBuffer(self.env.state_shape, self.config.replay_buffer_size, self.env, self.config)
-        self.time = 0
+        self.t = 1
 
     def sample_action(self, env, state, epsilon, network_name):
         # sample an action with e-greedy policy given by input parameter
@@ -67,19 +67,20 @@ class Q_Learning:
         epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                              self.config.max_time_steps_update_epsilon)
 
-        for episode in range(self.config.num_episodes):
-            print("Episode: ", episode + 1, "Time: ", self.time, " Epsilon: ", epsilon_scheduler.get_epsilon(self.time))
+        # for episode in range(self.config.num_episodes):
+        while self.t <= self.config.nsteps_train:
+            print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
 
             while not self.env.done:
-                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.time), "approx")
+                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t), "approx")
                 next_state, reward = self.env.take_action(state, action)
                 experience_tuple = (state, action, reward, next_state, self.env.done)
                 self.replay_buffer.store(experience_tuple)
                 state = next_state
 
-                if (self.time > self.config.learning_start) and (self.time % self.config.learning_freq == 0):
+                if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
 
                     minibatch = self.replay_buffer.sample_minibatch()
 
@@ -91,14 +92,13 @@ class Q_Learning:
                             # Important note: .detach below is necessary to prevent pytorch from doing backprop through the target network
                             y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach())
 
-                        self.perform_gradient_descent(state_mini, action_mini, target=y, timestep=self.time)
+                        self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
 
-                self.post_minibatch_updates()
-                self.monitor_performance(self.env, timestep=self.time)
-                self.time += 1
+                self.monitor_performance(self.env, timestep=self.t)
+                self.t += 1
                 # TODO: here is where we would update the learning rate
                 # Something like: scheduler.step() where scheduler = scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
-                if (self.time > self.config.learning_start) and (self.time % self.config.target_weight_update_freq == 0):
+                if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
 
                 # done with current time step

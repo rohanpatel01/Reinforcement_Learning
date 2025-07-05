@@ -1,4 +1,26 @@
 
+
+Notes on how to deal with suboptimal convergence
+
+Use a larger experience replay buffer as to not bias towards recent, potentially suboptimal experiences
+- possible the size of total number of timesteps
+
+Try lower learning rates
+
+Increase batch size as to avoid noisy gradient updates
+
+
+
+Learning rate
+nsteps_train
+epsilon decay percentage (multiplied by nsteps_train) 
+
+
+
+
+
+
+
 Configs with max rewards
 
 num episodes = 1000
@@ -21,4 +43,9 @@ nsteps_train = num_episodes * 1.5
 
 num episodes = 3000
 nsteps_train = num_episodes * 2.5
+
+
+
+
+
 
