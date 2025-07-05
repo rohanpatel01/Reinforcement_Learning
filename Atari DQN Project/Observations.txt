@@ -1,0 +1,24 @@
+
+Configs with max rewards
+
+num episodes = 1000
+nsteps_train = num_episodes * 0.5
+
+
+num episodes = 2500
+nsteps_train = num_episodes * 2
+
+
+num episodes = 2500
+nsteps_train = num_episodes * 2.5
+
+
+num episodes = 3000
+nsteps_train = num_episodes * 1
+
+num episodes = 3000
+nsteps_train = num_episodes * 1.5
+
+num episodes = 3000
+nsteps_train = num_episodes * 2.5
+

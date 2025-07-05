@@ -64,5 +64,5 @@ def environmentTest():
             print(int(s.numpy()), "\t\t", a, "\t\t", int(next_state.numpy()), "\t\t\t", reward)
 
 if __name__ == '__main__':
-    environmentTest()
+    # environmentTest()
     pass

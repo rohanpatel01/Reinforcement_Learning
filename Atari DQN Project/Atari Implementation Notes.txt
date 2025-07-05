@@ -4,6 +4,7 @@ I encountered the deadly triad
 
 When gamma = 0 (thus removing bootstrapping), the NN converges. Which means the oscillation is due to the deadly triad.
 
+This is good because I know what the issue is, but the NN converges on the wrong answer.
 
 
 

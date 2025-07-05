@@ -68,7 +68,7 @@ class Q_Learning:
                                              self.config.max_time_steps_update_epsilon)
 
         for episode in range(self.config.num_episodes):
-            # print("Episode: ", episode + 1, "Time: ", self.time, " Epsilon: ", epsilon_scheduler.get_epsilon(self.time))
+            print("Episode: ", episode + 1, "Time: ", self.time, " Epsilon: ", epsilon_scheduler.get_epsilon(self.time))
 
             state = self.env.reset()
 

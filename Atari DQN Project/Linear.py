@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
-
+import time
 from Q_Learning import Q_Learning
 from TestEnv import TestEnv
 from DummyEnv import DummyEnv
@@ -132,7 +132,7 @@ class LinearNN(nn.Module):
         return x
 
 
-def summary(model, env):
+def summary(model, env, config):
 
     state = env.reset()
 
@@ -180,16 +180,14 @@ def summary(model, env):
     print()
     print("Total Reward Received: ", sum(rewards_received))
 
-
-
-
     print("Taking a look at model parameters to see if weights are changing")
     print(model.approx_network.fc1.weight)
     print(model.approx_network.fc1.bias)
-    # print("Parameters: ", list(model.approx_network.parameters()))
-    #
-    # print()
-    # print("Gradients: ", list())
+
+    print("Configs:")
+    print("Num episodes: ", config.num_episodes)
+    print("Num nsteps_train %: ", config.nsteps_train / config.num_episodes)
+    print()
 
 
 
@@ -348,40 +346,50 @@ def main():
     # minibatch_test()
     # gradient_descent_test()
     print("Starting Training")
-    # env = TestEnv()
-    env = DummyEnv()
+    # env = DummyEnv()
     # env = SimpleEnv()
 
+    # need to perform some hyperparameter search
+    env = TestEnv()
     config = LinearConfig
-    model = Linear(env, config)
 
-    print("=================================================")
-    print("Summary BEFORE training")
-    summary(model, env)
-    print("=================================================")
-    print()
+    # best_reward = float('-inf')
+    # best_n_episodes = -1
+    # best_n_steps = -1
 
+    # orig = config.nsteps_train
+    # for n_episodes in config.num_episodes:
+    #     for nsteps in config.nsteps_train:
+    #
+    #         config.num_episodes = n_episodes
+    #         config.nsteps_train = config.num_episodes * nsteps
+    #         config.max_time_steps_update_epsilon = config.nsteps_train
 
-    model.train()
-    writer.flush()
-    writer.close()
-    print("Done Training")
+    for i in range(10):
+        model = Linear(env, config)
+        model.train()
+        writer.flush()
+        writer.close()
 
-    # Get summary of best trajectory
-    print("Summary AFTER training")
-    summary(model, env)
+        print("Summary AFTER training")
+        summary(model, env, config)
+
+        #     if total_reward > best_reward:
+        #         best_reward = total_reward
+        #         best_n_episodes = n_episodes
+        #         best_n_steps = (config.nsteps_train / config.num_episodes)
+        #
+        # config.nsteps_train = orig
+
+    # print("Best Reward: ", best_reward)
+    # print("Best n_episodes: ", best_n_episodes)
+    # print("Best n_steps: ", best_n_steps)
 
 
 
 if __name__ == '__main__':
-    for i in range(3):
-        print()
-        print()
-        print()
-        print("Test ", i + 1)
-        main()
-        print()
-        print()
-        print()
+
+
+    main()
 
 
