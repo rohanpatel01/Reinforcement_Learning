@@ -30,7 +30,7 @@ class Q_Learning:
         self.replay_buffer = ReplayBuffer(self.env.state_shape, self.config.replay_buffer_size, self.env, self.config)
         self.t = 1
 
-    def sample_action(self, env, state, epsilon, network_name):
+    def sample_action(self, env, state, epsilon, time, network_name):
         # sample an action with e-greedy policy given by input parameter
         raise NotImplementedError
 
@@ -67,14 +67,14 @@ class Q_Learning:
         epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                              self.config.max_time_steps_update_epsilon)
 
-        # for episode in range(self.config.num_episodes):
         while self.t <= self.config.nsteps_train:
-            print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
+
+            # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
 
             while not self.env.done:
-                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t), "approx")
+                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
                 next_state, reward = self.env.take_action(state, action)
                 experience_tuple = (state, action, reward, next_state, self.env.done)
                 self.replay_buffer.store(experience_tuple)
@@ -89,18 +89,11 @@ class Q_Learning:
                             y = torch.tensor(reward_mini, dtype=torch.double)
                         else:
                             best_action = self.get_best_action(next_state_mini, "target")
-                            # Important note: .detach below is necessary to prevent pytorch from doing backprop through the target network
                             y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach())
 
                         self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
 
                 self.monitor_performance(self.env, timestep=self.t)
                 self.t += 1
-                # TODO: here is where we would update the learning rate
-                # Something like: scheduler.step() where scheduler = scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
-
-                # done with current time step
-            # done with episode
-

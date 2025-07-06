@@ -27,9 +27,9 @@ class Linear(Q_Learning):
         self.set_target_weights()                   # Initially we want both target and approx network to have the same arbitrary weights
 
 
-    def sample_action(self, env, state, epsilon, network_name):
+    def sample_action(self, env, state, epsilon, time, network_name):
 
-        if np.random.rand() < epsilon:
+        if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
             return np.random.randint(env.numActions)
         else:
@@ -126,8 +126,8 @@ class LinearNN(nn.Module):
         self.env = env
         self.config = config
         self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
-        optimistic_bias = 2.0  # Try tuning this (e.g., 5.0, 10.0)
-        nn.init.constant_(self.fc1.bias, optimistic_bias)
+        # optimistic_bias = 2.0  # Try tuning this (e.g., 5.0, 10.0)
+        # nn.init.constant_(self.fc1.bias, optimistic_bias)
 
         self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
@@ -192,10 +192,10 @@ def summary(model, env, config):
     print()
     print("Total Reward Received: ", sum(rewards_received))
 
-    # print("Taking a look at model parameters to see if weights are changing")
-    # print(model.approx_network.fc1.weight)
-    # print(model.approx_network.fc1.bias)
-    #
+    print("Taking a look at model parameters to see if weights are changing")
+    print(model.approx_network.fc1.weight)
+    print(model.approx_network.fc1.bias)
+
     # print("Configs:")
     # print("Num nsteps_train: ", config.nsteps_train)
     # print()
@@ -348,18 +348,18 @@ def gradient_descent_test():
     pass
 
 
-
-def objective(trial):
-    config = LinearConfig(
-        nsteps_train = trial.suggest_categorical("nsteps_train", [1000, 1500, 2000, 2500, 3000]),
-        lr_begin = trial.suggest_categorical("lr_begin", [0.0005, 0.001 ] ),   # low=0.0005, high=0.001, step=0.0005
-        epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
-    )
+# def objective(trial):
+def main():
+    # config = LinearConfig(
+    #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000]),
+    #     lr_begin = trial.suggest_categorical("lr_begin", [0.0005 ] ),   # low=0.0005, high=0.001, step=0.0005
+    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
+    # )
 
     print("Starting Training")
-
     # env = DummyEnv()
     # env = SimpleEnv()
+    config = LinearConfig()
     env = TestEnv()
     model = Linear(env, config)
     model.train()
@@ -367,18 +367,19 @@ def objective(trial):
     writer.close()
 
     print("Summary AFTER training")
-    return summary(model, env, config)
+    summary(model, env, config)
 
 
 
 if __name__ == '__main__':
+    main()
 
-    storage_url = "sqlite:///db.sqlite3"
-    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials")
-    study.optimize(objective, n_trials=140)
-
-    print("Best Params: ", study.best_params)
-    print("Optimization complete. Data saved to:", storage_url)
+    # storage_url = "sqlite:///db.sqlite3"
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials - More Steps", load_if_exists=True)
+    # study.optimize(objective, n_trials=150)
+    #
+    # print("Best Params: ", study.best_params)
+    # print("Optimization complete. Data saved to:", storage_url)
 
 
 

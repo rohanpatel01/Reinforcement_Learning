@@ -10,7 +10,7 @@ class EpsilonScheduler:
         self.epsilon = begin_epsilon
 
     def get_epsilon(self, time):
-        assert (time >= 0)
+        time = max(time, 0)
         if time <= self.max_time_steps_update_epsilon:
             self.epsilon = (((self.begin_epsilon - self.end_epsilon) / -self.max_time_steps_update_epsilon) * time) + self.begin_epsilon
         else:
