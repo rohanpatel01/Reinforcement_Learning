@@ -1,0 +1,58 @@
+Starting Training
+Traceback (most recent call last):
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 411, in <module>
+    main()
+    ~~~~^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 400, in main
+    model = Linear(env, config)
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 24, in __init__
+    self.target_network = LinearNN(env, config)
+                          ~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 134, in __init__
+    self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
+                     ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\optim\adam.py", line 100, in __init__
+    super().__init__(params, defaults)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\optim\optimizer.py", line 369, in __init__
+    self.add_param_group(cast(dict, param_group))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\_compile.py", line 46, in inner
+    import torch._dynamo
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\_dynamo\__init__.py", line 13, in <module>
+    from . import config, convert_frame, eval_frame, resume_execution
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\_dynamo\convert_frame.py", line 52, in <module>
+    from torch._dynamo.symbolic_convert import TensorifyState
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\_dynamo\symbolic_convert.py", line 52, in <module>
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysis
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\_dynamo\exc.py", line 41, in <module>
+    from .utils import counters
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\_dynamo\utils.py", line 69, in <module>
+    import torch.fx.experimental.symbolic_shapes
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\fx\experimental\symbolic_shapes.py", line 67, in <module>
+    from torch.utils._sympy.functions import (
+    ...<9 lines>...
+    )
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\torch\utils\_sympy\functions.py", line 9, in <module>
+    import sympy
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\sympy\__init__.py", line 30, in <module>
+    from sympy.core.cache import lazy_function
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\sympy\core\__init__.py", line 4, in <module>
+    from .sympify import sympify, SympifyError
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\sympy\core\sympify.py", line 620, in <module>
+    from .basic import Basic
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\sympy\core\basic.py", line 13, in <module>
+    from .kind import Kind, UndefinedKind
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\sympy\core\kind.py", line 31, in <module>
+    from sympy.multipledispatch.dispatcher import (Dispatcher,
+        ambiguity_warn, ambiguity_register_error_ignore_dup,
+        str_signature, RaiseNotImplementedError)
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\.venv\Lib\site-packages\sympy\multipledispatch\__init__.py", line 1, in <module>
+    from .core import dispatch
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1118, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1218, in get_data
+KeyboardInterrupt

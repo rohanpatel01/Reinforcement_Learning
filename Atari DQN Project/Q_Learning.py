@@ -83,24 +83,39 @@ class Q_Learning:
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
 
                     minibatch = self.replay_buffer.sample_minibatch()
-                    states = []
-                    actions = []
-                    targets = []
 
-                    for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
+                    # turn all the states into torch tensor array
+                    # turn all actions in to torch tensor array
+                    # compute reward based on done flags and store in torch tensor
 
-                        states.append(state_mini)
-                        actions.append(action_mini)
+                    states, actions, rewards, next_states, dones = map(torch.tensor, *self.replay_buffer.sample_minibatch())
+                    states = states.to(dtype=torch.double)
+                    rewards = rewards.to(dtype=torch.double)
 
-                        if done_mini:
-                            targets.append(torch.tensor(reward_mini, dtype=torch.double))
-                        else:
-                            best_action = self.get_best_action(next_state_mini, "target")
-                            targets.append(reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach()))   # detach()???
 
-                    states = torch.tensor(states, dtype=torch.double)
-                    actions = torch.tensor(actions)
-                    targets = torch.tensor(targets)
+
+
+
+                    # map, zip, torch.tensor([...]), torch.where
+
+                    # states = []
+                    # actions = []
+                    # targets = []
+                    #
+                    # for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
+                    #
+                    #     states.append(state_mini)
+                    #     actions.append(action_mini)
+                    #
+                    #     if done_mini:
+                    #         targets.append(torch.tensor(reward_mini, dtype=torch.double))
+                    #     else:
+                    #         best_action = self.get_best_action(next_state_mini, "target")
+                    #         targets.append(reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach()))   # detach()???
+                    #
+                    # states = torch.tensor(states, dtype=torch.double)
+                    # actions = torch.tensor(actions)
+                    # targets = torch.tensor(targets)
 
 
 
