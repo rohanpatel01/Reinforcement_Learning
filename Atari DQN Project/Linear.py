@@ -13,7 +13,6 @@ from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
 
-
 writer = SummaryWriter()
 
 class Linear(Q_Learning):
@@ -61,6 +60,7 @@ class Linear(Q_Learning):
         # return int(best_action_index.numpy())
 
     def perform_gradient_descent(self, state, action, config, target, timestep):
+
         output = self.get_Q_value(state, action, "approx")
         loss = self.approx_network.criterion(output, target)
 
@@ -71,6 +71,7 @@ class Linear(Q_Learning):
         if self.config.grad_clip:
             torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
 
+        # See weight and bias gradients
         # print("Gradients for fc1 layer:")
         # for name, param in self.approx_network.fc1.named_parameters():
         #     if param.grad is not None:
@@ -347,9 +348,44 @@ def gradient_descent_test():
     # output = model.get_Q_value(state_track, action_track, "approx")
     pass
 
+def batch_update_test():
+
+    batch_size = 10
+
+    states = torch.tensor([2 for i in range(batch_size)], dtype=torch.double)                # [batch_size]
+
+    actions = torch.tensor([1 for i in range(batch_size)])      # [batch_size]
+
+    env = TestEnv()
+    config = LinearConfig()
+    model = LinearNN(env, config)
+    criterion = nn.MSELoss()
+
+    q_vals = model.forward(states.unsqueeze(1))                  # [batch_size, num_actions]
+    q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1) # [batch_size]
+
+    target = torch.tensor([3 for i in range(batch_size)])       # [batch_size]
+
+    # print("q_vals: ", q_vals)
+    # print("q_chosen: ", q_chosen)
+
+    loss = criterion(q_chosen, target)                         # 0-d scalar
+
+    # print("loss shape: ", loss.shape)
+    # print("loss: ", loss)
+
+    print("states shape: ", states.shape)
+    print("actions shape: ", actions.shape)
+    print("q_vals shape: ", q_vals.shape)
+    print("q_chosen shape: ", q_chosen.shape)
+    print("target shape: ", target.shape)
+
 
 # def objective(trial):
 def main():
+
+    # batch_update_test()
+
     # config = LinearConfig(
     #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000]),
     #     lr_begin = trial.suggest_categorical("lr_begin", [0.0005 ] ),   # low=0.0005, high=0.001, step=0.0005
@@ -357,10 +393,10 @@ def main():
     # )
 
     print("Starting Training")
-    # env = DummyEnv()
-    # env = SimpleEnv()
+    # # env = SimpleEnv()     # no bootstrapping and no consultation of NN
+    env = DummyEnv()        # does everything Q-learning normally does
+    # # env = TestEnv()
     config = LinearConfig()
-    env = TestEnv()
     model = Linear(env, config)
     model.train()
     writer.flush()

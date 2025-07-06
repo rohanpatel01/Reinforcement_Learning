@@ -83,15 +83,36 @@ class Q_Learning:
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
 
                     minibatch = self.replay_buffer.sample_minibatch()
+                    states = []
+                    actions = []
+                    targets = []
 
                     for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
+
+                        states.append(state_mini)
+                        actions.append(action_mini)
+
                         if done_mini:
-                            y = torch.tensor(reward_mini, dtype=torch.double)
+                            targets.append(torch.tensor(reward_mini, dtype=torch.double))
                         else:
                             best_action = self.get_best_action(next_state_mini, "target")
-                            y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach())
+                            targets.append(reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach()))   # detach()???
 
-                        self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
+                    states = torch.tensor(states, dtype=torch.double)
+                    actions = torch.tensor(actions)
+                    targets = torch.tensor(targets)
+
+
+
+
+
+                    #     self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
+
+
+
+
+
+
 
                 self.monitor_performance(self.env, timestep=self.t)
                 self.t += 1
