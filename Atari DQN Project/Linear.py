@@ -60,31 +60,59 @@ class Linear(Q_Learning):
         return best_action_index.item()
         # return int(best_action_index.numpy())
 
-    def perform_gradient_descent(self, state, action, config, target, timestep):
-        output = self.get_Q_value(state, action, "approx")
-        loss = self.approx_network.criterion(output, target)
+    # def perform_gradient_descent(self, state, action, config, target, timestep):
+    #     output = self.get_Q_value(state, action, "approx")
+    #     loss = self.approx_network.criterion(output, target)
+    #
+    #     writer.add_scalar("Loss/train", loss.item(), timestep)
+    #     self.approx_network.optimizer.zero_grad()
+    #     loss.backward()
+    #
+    #     if self.config.grad_clip:
+    #         torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
+    #
+    #     # print("Gradients for fc1 layer:")
+    #     # for name, param in self.approx_network.fc1.named_parameters():
+    #     #     if param.grad is not None:
+    #     #         print(f"  Parameter: {name}")
+    #     #         print(f"    Gradient shape: {param.grad.shape}")
+    #     #         print(f"    Gradient values (first 5): {param.grad.flatten()[:5]}")
+    #     #         print(f"    Gradient mean: {param.grad.mean().item():.6f}")
+    #     #         print("-" * 20)
+    #     #     else:
+    #     #         print(f"  Parameter: {name} has no gradient (check if requires_grad=True or if backward was called)")
+    #     #         print("-" * 20)
+    #
+    #     self.approx_network.optimizer.step()
+    #     self.approx_network.scheduler.step()
 
+
+    def train_on_minibatch(self, minibatch, timestep):
+        states, actions, rewards, next_states, dones = minibatch
+
+        q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
+        q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
+
+        best_actions = torch.tensor([self.get_best_action(torch.tensor([ns], dtype=torch.double).detach(), "target") for ns in next_states])
+
+        next_q_values = torch.tensor([
+            self.target_network(torch.tensor([ns], dtype=torch.double))[a].detach() for ns, a in zip(next_states, best_actions)
+        ], dtype=torch.double)
+
+        target = torch.where(
+            dones,
+            rewards,
+            rewards + (self.config.gamma * next_q_values)
+        )
+
+        loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
+        writer.add_scalar("Reward/train", np.average(rewards).item(), timestep)
         self.approx_network.optimizer.zero_grad()
         loss.backward()
-
-        if self.config.grad_clip:
-            torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
-
-        # print("Gradients for fc1 layer:")
-        # for name, param in self.approx_network.fc1.named_parameters():
-        #     if param.grad is not None:
-        #         print(f"  Parameter: {name}")
-        #         print(f"    Gradient shape: {param.grad.shape}")
-        #         print(f"    Gradient values (first 5): {param.grad.flatten()[:5]}")
-        #         print(f"    Gradient mean: {param.grad.mean().item():.6f}")
-        #         print("-" * 20)
-        #     else:
-        #         print(f"  Parameter: {name} has no gradient (check if requires_grad=True or if backward was called)")
-        #         print("-" * 20)
-
         self.approx_network.optimizer.step()
         self.approx_network.scheduler.step()
+
 
     def monitor_performance(self, env, timestep):
         # state_track = torch.tensor([0], dtype=torch.double)
@@ -121,7 +149,7 @@ class LinearNN(nn.Module):
         return 1.0 - (current_step / self.config.lr_n_steps) * (1 - self.config.lr_end / self.config.lr_begin)
 
     def __init__(self, env, config):
-        # torch.manual_seed(42)
+        # torch.manual_seed(82)                   # TODO: remove this after implementing
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
@@ -134,7 +162,7 @@ class LinearNN(nn.Module):
 
         # gamma = (self.config.lr_end / self.config.lr_begin) ** (self.config.nsteps_train / self.config.step_size)
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.MSELoss(reduction='sum')
         print("layer weights: ", self.fc1.weight)
 
 
@@ -355,19 +383,20 @@ def main():
     #     lr_begin = trial.suggest_categorical("lr_begin", [0.0005 ] ),   # low=0.0005, high=0.001, step=0.0005
     #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
     # )
+    for i in range(10):
+        print("Starting Training")
+        config = LinearConfig()
 
-    print("Starting Training")
-    # env = DummyEnv()
-    # env = SimpleEnv()
-    config = LinearConfig()
-    env = TestEnv()
-    model = Linear(env, config)
-    model.train()
-    writer.flush()
-    writer.close()
+        env = DummyEnv()
+        # env = TestEnv()
 
-    print("Summary AFTER training")
-    summary(model, env, config)
+        model = Linear(env, config)
+        model.train()
+        writer.flush()
+        writer.close()
+
+        print("Summary AFTER training")
+        summary(model, env, config)
 
 
 

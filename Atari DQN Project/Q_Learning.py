@@ -51,16 +51,12 @@ class Q_Learning:
         # replace target weights with that of the current network's weights
         raise NotImplementedError
 
-    def build(self):
-        # builds and initializes the NN that will be used for function approximation for Q values
-        # I think this can be optional
+    def train_on_minibatch(self, minibatch, timestep):
         pass
 
     def monitor_performance(self):
         pass
 
-    def post_minibatch_updates(self):
-        pass
 
     def train(self):
 
@@ -82,18 +78,22 @@ class Q_Learning:
 
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
 
-                    minibatch = self.replay_buffer.sample_minibatch()
+                    self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
 
-                    for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
-                        if done_mini:
-                            y = torch.tensor(reward_mini, dtype=torch.double)
-                        else:
-                            best_action = self.get_best_action(next_state_mini, "target")
-                            y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach())
+                    # states, actions, rewards, next_states, dones = self.replay_buffer.sample_minibatch()
 
-                        self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
+                    # for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
+                    #     if done_mini:
+                    #         y = torch.tensor(reward_mini, dtype=torch.double)
+                    #     else:
+                    #         best_action = self.get_best_action(next_state_mini, "target")
+                    #         y = reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach())
+                    #
+                    #     self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
 
                 self.monitor_performance(self.env, timestep=self.t)
+
+
                 self.t += 1
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
