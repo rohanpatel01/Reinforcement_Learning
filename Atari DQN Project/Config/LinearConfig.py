@@ -12,15 +12,15 @@ class LinearConfig:
         self.grad_clip                       = True
         self.clip_val                        = 10
 
-        self.nsteps_train                    = 10000
+        self.nsteps_train                    = 40000
 
-        self.lr_begin                        = 0.005 #0.005    bigest change was making learning rate smaller - before was 0.005 which showed loss function as unstable and increasing
-        self.lr_end                          = 0.001  # 0.001  # for optuna experiment we will make them the same
+        self.lr_begin                        = 0.005
+        self.lr_end                          = 0.005
         self.lr_n_steps                      = self.nsteps_train / 2 # should be // 2 ???
         # step_size                       = int(nsteps_train/3)       # every 10,000 time steps we will update the learning rate   #????? correct??
 
         self.begin_epsilon                   = 1
-        self.end_epsilon                     = 0.01
+        self.end_epsilon                     = 1
         self.epsilon_decay_percentage        = 0.7
         self.max_time_steps_update_epsilon   = self.nsteps_train * self.epsilon_decay_percentage
 

@@ -123,15 +123,16 @@ class Linear(Q_Learning):
         # writer.add_scalar("Performance/TestEnv_State_0_Action_2", q_best_action, timestep)
 
         # Monitor average Q(s,a) over time
-        count = 0
-        sum = 0
-        for state in env.states:
-            for action in range(env.numActions):
-                state = torch.tensor([state], dtype=torch.double).detach()
-                sum += self.get_Q_value(state, action, "approx").detach()
-                count += 1
+        # count = 0
+        # sum = 0
+        # for state in env.states:
+        #     for action in range(env.numActions):
+        #         state = torch.tensor([state], dtype=torch.double).detach()
+        #         sum += self.get_Q_value(state, action, "approx").detach()
+        #         count += 1
         # Trying to check for divergence. Divergence would appear as monotonic increase in Q-values even after the policy stops improving
-        writer.add_scalar("Performance/DummyEnv_Average_Q(s,a)", sum/count, timestep)
+        # should see this value increasing
+        writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([4], dtype=torch.double), 0, "approx"), timestep)
 
 
 
@@ -383,7 +384,7 @@ def main():
     #     lr_begin = trial.suggest_categorical("lr_begin", [0.0005 ] ),   # low=0.0005, high=0.001, step=0.0005
     #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
     # )
-    for i in range(10):
+    for i in range(1):
         print("Starting Training")
         config = LinearConfig()
 
