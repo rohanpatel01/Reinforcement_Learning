@@ -4,15 +4,15 @@ import torch
 class DummyEnv:
     def __init__(self):
 
-        self.numStates = 10
+        self.numStates = 6
         self.numActions = 3
         self.state_shape = np.array([1])
 
         self.states = [i for i in range(self.numStates)]
         self.actions = [1, -1, 0]
 
-        self.rewards = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1] # 0, 0, 0, 0, 1
-        self.MAX_TIME_STEPS = 9
+        self.rewards = [0, 0, 0, 0, 0, 1] # 0, 0, 0, 0, 1
+        self.MAX_TIME_STEPS = 5
 
         self.current_time = 0
         self.done = False
