@@ -50,10 +50,10 @@ class ReplayBuffer:
             dones.append(minibatch[i][4])
 
         return (
-            torch.tensor(states, dtype=torch.double),
-            torch.tensor(actions, dtype=torch.long),
-            torch.tensor(rewards, dtype=torch.double),
-            torch.tensor(next_states, dtype=torch.double),
+            torch.stack(states), # , dtype=torch.double            # [batch_size, num_actions]  -> torch.tensor([batch_size, num_actions])
+            torch.tensor(actions, dtype=torch.long),                # forget why this needs to be long but a while ago threw error and fix was making this long type
+            torch.tensor(rewards, dtype=torch.float),               # float to match nn.Linear and states types
+            torch.stack(next_states),  # , dtype=torch.double
             torch.tensor(dones, dtype=torch.bool)
         )
 

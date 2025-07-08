@@ -12,7 +12,7 @@ from Config.LinearConfig import LinearConfig
 from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
-
+import gymnasium as gym
 
 writer = SummaryWriter()
 
@@ -31,7 +31,7 @@ class Linear(Q_Learning):
 
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
-            return np.random.randint(env.numActions)
+            return np.random.randint(env.action_space.n) # env.numActions
         else:
             # select greedy action
             return self.get_best_action(state, network_name)
@@ -63,14 +63,14 @@ class Linear(Q_Learning):
     def train_on_minibatch(self, minibatch, timestep):
         states, actions, rewards, next_states, dones = minibatch
 
-        q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
+        q_vals = self.approx_network.forward(states)  # .unsqueeze(1)      # [batch_size, num_actions]
         q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
 
-        best_actions = torch.tensor([self.get_best_action(torch.tensor([ns], dtype=torch.double).detach(), "target") for ns in next_states])
+        best_actions = torch.tensor([self.get_best_action(ns, "target") for ns in next_states]) # torch.tensor([ns], dtype=torch.double).detach()
 
         next_q_values = torch.tensor([
-            self.target_network(torch.tensor([ns], dtype=torch.double))[a].detach() for ns, a in zip(next_states, best_actions)
-        ], dtype=torch.double)
+            self.target_network(ns)[a] for ns, a in zip(next_states, best_actions)       # torch.tensor([ns], dtype=torch.double)[a].detach()
+        ], dtype=torch.float)
 
         target = torch.where(
             dones,
@@ -80,7 +80,7 @@ class Linear(Q_Learning):
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
-        writer.add_scalar("Reward/train", np.average(rewards).item(), timestep)
+        # writer.add_scalar("Reward/train", np.average(rewards).item(), timestep)
         self.approx_network.optimizer.zero_grad()
         loss.backward()
         self.approx_network.optimizer.step()
@@ -88,7 +88,10 @@ class Linear(Q_Learning):
 
 
     def monitor_performance(self, reward, env, timestep):
-        writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([4], dtype=torch.double), 0, "approx"), timestep)
+        total_reward_episode, avg_reward_overall = reward
+
+        writer.add_scalar("Performance/CartPole_Total_Reward_Per_Episode", total_reward_episode, timestep)
+        writer.add_scalar("Performance/CartPole_Avg_Reward_Overall", avg_reward_overall, timestep)
 
 
     def set_target_weights(self):
@@ -109,9 +112,9 @@ class LinearNN(nn.Module):
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
-        self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
+        self.fc1 = nn.Linear(np.prod(self.env.observation_space.shape)*self.config.frame_stack_size, self.env.action_space.n) # self.env.state_shape        # self.env.numActions
 
-        self.double()       # converts model to double to match datatype of input with no serious performance problems
+        # self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
@@ -126,40 +129,47 @@ class LinearNN(nn.Module):
 
 def summary(model, env, config):
 
-    state = env.reset()
+    state = env.reset(seed=42)
 
     print()
     print("==============================================")
     print("Summary: ")
     # Print out all Q(s,a) values
-    print("State\tAction\tNext State\tReward")
-
-    for state in env.states:
-        for action in range(len(env.actions)):
-            state = torch.tensor([state], dtype=torch.double)
-            print(int(state[0].numpy()), "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))
+    # print("State\tAction\tNext State\tReward")
+    #
+    # for state in env.states:
+    #     for action in range(len(env.actions)):
+    #         state = torch.tensor([state], dtype=torch.double)
+    #         print(int(state[0].numpy()), "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))
 
     print("==============================================")
     print()
     print("Best trajectory: ")
 
     # Get best trajectory from state 0
-    state = env.reset()
+    state, info = env.reset()
+    state = torch.tensor(state)
 
     states_visited = []
     actions_taken = []
     rewards_received = []
 
-    while not env.done:
+    while True:         # not env.done
         best_action = model.get_best_action(state, "approx")
 
         states_visited.append(state)
         actions_taken.append(best_action)
 
-        next_state, reward = env.take_action(state, best_action)
+        # next_state, reward = env.take_action(state, best_action)
+        next_state, reward, terminated, truncated, info = env.step(best_action)
+        next_state = torch.tensor(next_state)
+
         rewards_received.append(reward)
 
         state = next_state
+
+        if terminated:
+            break
 
     print("Best trajectory from Test Environment")
     for i in range(len(states_visited)):
@@ -354,16 +364,47 @@ def objective(trial):
     # writer.add_scalar("Performance/NumTimesSeeOptimalTrajectory", total_rewards, i)
 
 
+def cartPoleTest():
+
+    env = gym.make("CartPole-v1", render_mode="rgb_array")
+
+    # print(env.observation_space.shape)
+    # print(env.action_space.n)
+
+    config = LinearConfig()
+
+    model = Linear(env, config)
+
+    model.train()
+    writer.flush()
+    writer.close()
+
+    print("Summary AFTER training")
+    summary(model, env, config)
+
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
+
+    cartPoleTest()
+
     # main()
 
-    storage_url = "sqlite:///db.sqlite3"
-    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
-    study.optimize(objective, n_trials=140)
-
-    print("Best Params: ", study.best_params)
-    print("Optimization complete. Data saved to:", storage_url)
+    # storage_url = "sqlite:///db.sqlite3"
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
+    # study.optimize(objective, n_trials=140)
+    #
+    # print("Best Params: ", study.best_params)
+    # print("Optimization complete. Data saved to:", storage_url)
 
 
 

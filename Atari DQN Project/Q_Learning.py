@@ -27,7 +27,7 @@ class Q_Learning:
     def __init__(self, env, config):
         self.env = env
         self.config = config
-        self.replay_buffer = ReplayBuffer(self.env.state_shape, self.config.replay_buffer_size, self.env, self.config)
+        self.replay_buffer = ReplayBuffer(self.env.observation_space.shape, self.config.replay_buffer_size, self.env, self.config)
         self.t = 1
 
     def sample_action(self, env, state, epsilon, time, network_name):
@@ -63,25 +63,73 @@ class Q_Learning:
         epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                              self.config.max_time_steps_update_epsilon)
 
+        # Metrics for average reward of episodes
+        total_reward = 0
+        n_count = 0
+
         while self.t <= self.config.nsteps_train:
 
             # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
-            state = self.env.reset()
+            state, info = self.env.reset(seed=42)
+            state = torch.tensor(state)
 
-            while not self.env.done:
+            total_reward_episode = 0
+
+            # Observe and learn from an episode
+            while True: # not self.env.done
+
                 action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
-                next_state, reward = self.env.take_action(state, action)
-                experience_tuple = (state, action, reward, next_state, self.env.done)
+
+                # next_state, reward = self.env.take_action(state, action)
+                next_state, reward, terminated, truncated, info = self.env.step(action)
+                next_state = torch.tensor(next_state)
+
+                total_reward_episode += reward      # just for tracking performance
+
+                experience_tuple = (state, action, reward, next_state, terminated)  # self.env.done
                 self.replay_buffer.store(experience_tuple)
                 state = next_state
 
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
                     self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
 
-                self.monitor_performance(reward, self.env, timestep=self.t)
+
+                # self.monitor_performance(reward, self.env, timestep=self.t)
 
 
                 self.t += 1
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
+
+                if terminated:
+                    total_reward += total_reward_episode
+                    n_count += 1
+                    self.monitor_performance((total_reward_episode, total_reward / n_count), self.env, timestep=self.t)
+                    break
+
+
+            # end while True for episode
+        # end while train for nsteps
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

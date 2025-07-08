@@ -6,9 +6,9 @@ class LinearConfig:
 
         self.learning_delay                  = 0         # number of timesteps to perform random actions for
 
-        self.nsteps_train                    = 10000
+        self.nsteps_train                    = 500 * 100
 
-        self.learning_start                  = 200
+        self.learning_start                  = 500 * 10   # was 200
         self.learning_freq                   = 4
 
         self.grad_clip                       = False
