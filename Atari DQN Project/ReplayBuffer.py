@@ -15,10 +15,29 @@ class ReplayBuffer:
         self.__experience_shape = [5] # because we just store the one element: the tuple
         self.__num_elements = 0
         self.replay_buffer = [None for i in range(self.__MAX_SIZE)]           # stores tuples of experiences where each state in the tuple is a stack of the previous 4 states (including that current state in the stack)
+        self.temp_buffer = [None for i in range(self.__MAX_SIZE)]               # just to see if the buffer contains many of the same experiences
         self.env = env
 
     def store(self, experience_tuple):
         self.replay_buffer[self.__next_replay_location] = experience_tuple
+
+        # TODO: CHANGE SO WE USE THIS AS A SET INSTEAD - will have to change store because we want to return the state and next_state as tuples
+        # BUT WE WANT TO STORE THEM AS .ITEM() BC SET WILL HASH ON THAT
+        # TODO
+        # - change sample_minibatch() function to support ^^^ and
+
+        # THIS
+        state = experience_tuple[0].item()
+        action = experience_tuple[1]
+        reward = experience_tuple[2]
+        next_state = experience_tuple[3].item()
+        done = experience_tuple[4]
+
+
+        self.temp_buffer[self.__next_replay_location] = (state, action, reward, next_state, done)
+
+
+
         self.__next_replay_location = (self.__next_replay_location + 1) % self.__MAX_SIZE
         self.__num_elements  = min(self.__num_elements + 1, self.__MAX_SIZE)
 

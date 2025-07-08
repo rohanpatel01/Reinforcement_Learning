@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from tqdm import tqdm
+from collections import Counter
 
 # This will be a general class to implement Q_learning with the following params to make it flexible
 '''
@@ -57,6 +58,8 @@ class Q_Learning:
     def monitor_performance(self):
         pass
 
+    def evaluate_policy(self):
+        pass
 
     def train(self):
 
@@ -64,12 +67,13 @@ class Q_Learning:
                                              self.config.max_time_steps_update_epsilon)
 
         while self.t <= self.config.nsteps_train:
+            self.t += 1
 
             # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
 
-            while not self.env.done:
+            while True:         # not self.env.done
                 action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
                 next_state, reward = self.env.take_action(state, action)
                 experience_tuple = (state, action, reward, next_state, self.env.done)
@@ -81,7 +85,52 @@ class Q_Learning:
 
                 self.monitor_performance(reward, self.env, timestep=self.t)
 
-
-                self.t += 1
+                # Perform update if it is time
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
+
+
+                if self.env.done:
+                    break
+
+
+            # just for logging purposes we will count the number of unique elements in replay buffer along with count per unique element
+            # just doing this less often
+            if (self.t % 500 == 0):
+                print()
+                print("=====================================================================")
+                print("Time: ", self.t)
+
+                counts = Counter(self.replay_buffer.temp_buffer)
+                num_unique = len(counts)
+
+                print("Number of unique items:", num_unique)
+                print("Counts per unique item:")
+                for item, count in counts.items():
+                    print(f"{item}: {count}")
+
+                print("=====================================================================")
+                print()
+
+
+            # Evaluate the current policy
+            # if self.t % 500 == 0:
+            #     self.evaluate_policy()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

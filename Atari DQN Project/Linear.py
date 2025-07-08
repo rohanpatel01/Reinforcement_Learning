@@ -12,9 +12,10 @@ from Config.LinearConfig import LinearConfig
 from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
-
+from ReplayBuffer import ReplayBuffer
 
 writer = SummaryWriter()
+reward_writer_timestep = 0
 
 class Linear(Q_Learning):
 
@@ -61,6 +62,13 @@ class Linear(Q_Learning):
 
     #
     def train_on_minibatch(self, minibatch, timestep):
+
+        # TODO: Investigate theory of early minibatches containing same / very similar
+        # TODO: possible fix to implement:
+        #   Decouple collecting data from training frequency
+        #   For example, collect 4–10 environment steps per 1 training update.
+
+
         states, actions, rewards, next_states, dones = minibatch
 
         q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
@@ -88,13 +96,45 @@ class Linear(Q_Learning):
 
 
     def monitor_performance(self, reward, env, timestep):
-        writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([4], dtype=torch.double), 0, "approx"), timestep)
+        writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([8], dtype=torch.double), 0, "approx"), timestep)
 
 
     def set_target_weights(self):
         # target network weights and biases <-- approx network weights and biases
         approx_network_state_dict = self.approx_network.state_dict()
         self.target_network.load_state_dict(approx_network_state_dict)
+
+    # Generate some episodes and evaluate the rewards attained from following the policy given by current approx NN Q vals
+    def evaluate_policy(self):
+        global reward_writer_timestep
+
+
+        epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
+                                             self.config.max_time_steps_update_epsilon)
+
+        temp_replay_buffer = ReplayBuffer(self.env.state_shape, self.config.replay_buffer_size, self.env, self.config)
+
+
+        for i in range(self.config.num_episodes_test):
+            total_reward = 0
+            state = self.env.reset()
+
+            while True:
+                action = self.sample_action(self.env, state,
+                                            epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t,
+                                            "approx")
+                next_state, reward = self.env.take_action(state, action)
+                experience_tuple = (state, action, reward, next_state, self.env.done)
+                temp_replay_buffer.store(experience_tuple)
+                state = next_state
+
+                total_reward += reward
+                if self.env.done:
+                    break
+
+
+            writer.add_scalar("Performance/DummyEnv_Full_Reward_for_current_policy", total_reward, reward_writer_timestep)
+            reward_writer_timestep += 1
 
 
 class LinearNN(nn.Module):
@@ -328,21 +368,21 @@ def gradient_descent_test():
     pass
 
 
-def objective(trial):
-# def main():
-    config = LinearConfig(
-        nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
-        lr_begin = trial.suggest_categorical("lr_begin", [0.001, 0.005, 0.01, 0.05 ] ),   # low=0.0005, high=0.001, step=0.0005
-        epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
-        lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
-        minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256])
-    )
+# def objective(trial):
+def main():
+    # config = LinearConfig(
+    #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
+    #     lr_begin = trial.suggest_categorical("lr_begin", [0.001, 0.005, 0.01, 0.05 ] ),   # low=0.0005, high=0.001, step=0.0005
+    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
+    #     lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+    #     minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256])
+    # )
     # for i in range(20):
     print("Starting Training")
-    # config = LinearConfig()
+    config = LinearConfig()
 
-    # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-    env = TestEnv()         # first see if we can learn the TestEnv with random action
+    env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+    # env = TestEnv()         # first see if we can learn the TestEnv with random action
 
     model = Linear(env, config)
     model.train()
@@ -356,14 +396,14 @@ def objective(trial):
 
 
 if __name__ == '__main__':
-    # main()
+    main()
 
-    storage_url = "sqlite:///db.sqlite3"
-    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
-    study.optimize(objective, n_trials=140)
-
-    print("Best Params: ", study.best_params)
-    print("Optimization complete. Data saved to:", storage_url)
+    # storage_url = "sqlite:///db.sqlite3"
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
+    # study.optimize(objective, n_trials=140)
+    #
+    # print("Best Params: ", study.best_params)
+    # print("Optimization complete. Data saved to:", storage_url)
 
 
 
