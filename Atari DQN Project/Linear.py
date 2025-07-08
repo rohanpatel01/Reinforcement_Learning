@@ -58,35 +58,8 @@ class Linear(Q_Learning):
 
         best_action_index = torch.argmax(Q_actions.detach())
         return best_action_index.item()
-        # return int(best_action_index.numpy())
 
-    # def perform_gradient_descent(self, state, action, config, target, timestep):
-    #     output = self.get_Q_value(state, action, "approx")
-    #     loss = self.approx_network.criterion(output, target)
     #
-    #     writer.add_scalar("Loss/train", loss.item(), timestep)
-    #     self.approx_network.optimizer.zero_grad()
-    #     loss.backward()
-    #
-    #     if self.config.grad_clip:
-    #         torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
-    #
-    #     # print("Gradients for fc1 layer:")
-    #     # for name, param in self.approx_network.fc1.named_parameters():
-    #     #     if param.grad is not None:
-    #     #         print(f"  Parameter: {name}")
-    #     #         print(f"    Gradient shape: {param.grad.shape}")
-    #     #         print(f"    Gradient values (first 5): {param.grad.flatten()[:5]}")
-    #     #         print(f"    Gradient mean: {param.grad.mean().item():.6f}")
-    #     #         print("-" * 20)
-    #     #     else:
-    #     #         print(f"  Parameter: {name} has no gradient (check if requires_grad=True or if backward was called)")
-    #     #         print("-" * 20)
-    #
-    #     self.approx_network.optimizer.step()
-    #     self.approx_network.scheduler.step()
-
-
     def train_on_minibatch(self, minibatch, timestep):
         states, actions, rewards, next_states, dones = minibatch
 
@@ -114,26 +87,8 @@ class Linear(Q_Learning):
         self.approx_network.scheduler.step()
 
 
-    def monitor_performance(self, env, timestep):
-        # state_track = torch.tensor([0], dtype=torch.double)
-        # # action = self.get_best_action(state_track, "approx")
-        # q_best_action = self.get_Q_value(state_track, action=1, network_name="approx")
-        # # q_best_action = self.get_Q_value(state_track, action, "approx")
-        # # print("Q of state: ", state_track, " and best action ", best_action, " : ", q_best_action)
-        # writer.add_scalar("Performance/TestEnv_State_0_Action_2", q_best_action, timestep)
-
-        # Monitor average Q(s,a) over time
-        # count = 0
-        # sum = 0
-        # for state in env.states:
-        #     for action in range(env.numActions):
-        #         state = torch.tensor([state], dtype=torch.double).detach()
-        #         sum += self.get_Q_value(state, action, "approx").detach()
-        #         count += 1
-        # Trying to check for divergence. Divergence would appear as monotonic increase in Q-values even after the policy stops improving
-        # should see this value increasing
+    def monitor_performance(self, reward, env, timestep):
         writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([4], dtype=torch.double), 0, "approx"), timestep)
-
 
 
     def set_target_weights(self):
@@ -155,17 +110,13 @@ class LinearNN(nn.Module):
         self.env = env
         self.config = config
         self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
-        # optimistic_bias = 2.0  # Try tuning this (e.g., 5.0, 10.0)
-        # nn.init.constant_(self.fc1.bias, optimistic_bias)
 
         self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
-        # gamma = (self.config.lr_end / self.config.lr_begin) ** (self.config.nsteps_train / self.config.step_size)
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
         self.criterion = nn.MSELoss(reduction='sum')
         print("layer weights: ", self.fc1.weight)
-
 
 
     def forward(self, x):
@@ -377,39 +328,42 @@ def gradient_descent_test():
     pass
 
 
-# def objective(trial):
-def main():
-    # config = LinearConfig(
-    #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000]),
-    #     lr_begin = trial.suggest_categorical("lr_begin", [0.0005 ] ),   # low=0.0005, high=0.001, step=0.0005
-    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
-    # )
-    for i in range(1):
-        print("Starting Training")
-        config = LinearConfig()
+def objective(trial):
+# def main():
+    config = LinearConfig(
+        nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
+        lr_begin = trial.suggest_categorical("lr_begin", [0.001, 0.005, 0.01, 0.05 ] ),   # low=0.0005, high=0.001, step=0.0005
+        epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
+        lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+        minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256])
+    )
+    # for i in range(20):
+    print("Starting Training")
+    # config = LinearConfig()
 
-        env = DummyEnv()
-        # env = TestEnv()
+    # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+    env = TestEnv()         # first see if we can learn the TestEnv with random action
 
-        model = Linear(env, config)
-        model.train()
-        writer.flush()
-        writer.close()
+    model = Linear(env, config)
+    model.train()
+    writer.flush()
+    writer.close()
 
-        print("Summary AFTER training")
-        summary(model, env, config)
+    print("Summary AFTER training")
+    return summary(model, env, config)
+    # writer.add_scalar("Performance/NumTimesSeeOptimalTrajectory", total_rewards, i)
 
 
 
 if __name__ == '__main__':
-    main()
+    # main()
 
-    # storage_url = "sqlite:///db.sqlite3"
-    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials - More Steps", load_if_exists=True)
-    # study.optimize(objective, n_trials=150)
-    #
-    # print("Best Params: ", study.best_params)
-    # print("Optimization complete. Data saved to:", storage_url)
+    storage_url = "sqlite:///db.sqlite3"
+    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
+    study.optimize(objective, n_trials=140)
+
+    print("Best Params: ", study.best_params)
+    print("Optimization complete. Data saved to:", storage_url)
 
 
 
