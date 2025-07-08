@@ -69,7 +69,7 @@ class Q_Learning:
         while self.t <= self.config.nsteps_train:
             self.t += 1
 
-            # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
+            print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
 
@@ -96,26 +96,26 @@ class Q_Learning:
 
             # just for logging purposes we will count the number of unique elements in replay buffer along with count per unique element
             # just doing this less often
-            if (self.t % 500 == 0):
-                print()
-                print("=====================================================================")
-                print("Time: ", self.t)
-
-                counts = Counter(self.replay_buffer.temp_buffer)
-                num_unique = len(counts)
-
-                print("Number of unique items:", num_unique)
-                print("Counts per unique item:")
-                for item, count in counts.items():
-                    print(f"{item}: {count}")
-
-                print("=====================================================================")
-                print()
+            # if self.t % 500 == 0:
+            #     print()
+            #     print("=====================================================================")
+            #     print("Time: ", self.t)
+            #
+            #     counts = Counter(self.replay_buffer.temp_buffer)
+            #     num_unique = len(counts)
+            #
+            #     print("Number of unique items:", num_unique)
+            #     print("Counts per unique item:")
+            #     for item, count in counts.items():
+            #         print(f"{item}: {count}")
+            #
+            #     print("=====================================================================")
+            #     print()
 
 
             # Evaluate the current policy
-            # if self.t % 500 == 0:
-            #     self.evaluate_policy()
+            if self.t % 500 == 0:
+                self.evaluate_policy()
 
 
 

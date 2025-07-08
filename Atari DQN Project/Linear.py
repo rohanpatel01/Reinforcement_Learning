@@ -13,6 +13,7 @@ from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
 from ReplayBuffer import ReplayBuffer
+from collections import Counter
 
 writer = SummaryWriter()
 reward_writer_timestep = 0
@@ -220,7 +221,17 @@ def summary(model, env, config):
     # print("Num nsteps_train: ", config.nsteps_train)
     # print()
 
-    return sum(rewards_received)            # rewards from the best possible trajectory
+    print()
+    print("Unique elements in replay buffer")
+    counts = Counter(model.replay_buffer.replay_buffer)
+    num_unique = len(counts)
+
+    print("Number of unique items:", num_unique)
+    print("Counts per unique item:")
+    for item, count in counts.items():
+        print(f"{item}: {count}")
+
+    # return sum(rewards_received)            # rewards from the best possible trajectory
 
 
 def q_value_test():
