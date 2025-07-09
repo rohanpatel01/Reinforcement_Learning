@@ -105,7 +105,7 @@ class LinearNN(nn.Module):
         return 1.0 - (current_step / self.config.lr_n_steps) * (1 - self.config.lr_end / self.config.lr_begin)
 
     def __init__(self, env, config):
-        # torch.manual_seed(82)                   # TODO: remove this after implementing
+        # torch.manual_seed(42)                   # TODO: remove this after implementing
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
@@ -330,15 +330,19 @@ def gradient_descent_test():
 
 # def objective(trial):
 def main():
+    # np.random.seed(82)
+
     # config = LinearConfig(
-    #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
-    #     lr_begin = trial.suggest_categorical("lr_begin", [0.001, 0.005, 0.01, 0.05 ] ),   # low=0.0005, high=0.001, step=0.0005
-    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
-    #     lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
-    #     minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256])
+        # nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
+        # lr_begin = trial.suggest_categorical("lr_begin", [0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14] ),   # low=0.0005, high=0.001, step=0.0005
+        # lr_end = trial.suggest_categorical("lr_end", [0.001, 0.003, 0.005, 0.008, 0.01])
+
+        # epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
+        # lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+        # minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256])
     # )
     # for i in range(20):
-    print("Starting Training")
+    # print("Starting Training")
     config = LinearConfig()
 
     env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
@@ -359,8 +363,8 @@ if __name__ == '__main__':
     main()
 
     # storage_url = "sqlite:///db.sqlite3"
-    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
-    # study.optimize(objective, n_trials=140)
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_lr_begin_decrease_highervals", load_if_exists=True)
+    # study.optimize(objective, n_trials=10)
     #
     # print("Best Params: ", study.best_params)
     # print("Optimization complete. Data saved to:", storage_url)
