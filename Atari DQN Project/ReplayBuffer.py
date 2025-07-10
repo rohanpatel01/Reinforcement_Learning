@@ -1,6 +1,6 @@
 
 import numpy as np
-from random import random
+import torch
 
 
 class ReplayBuffer:
@@ -25,16 +25,45 @@ class ReplayBuffer:
 
     def sample_minibatch(self):
 
-        # minibatch = []
-        # random.sample()
-        # for i in range(self.config.minibatch_size):
-        #     minibatch.append( self.replay_buffer[ np.random.randint( self.__num_elements ) ] )
-        #
-        # return minibatch
+        # TODO
+        '''
+        want to sample a minibatch then I want to make minibatch = states, action, rewards, next_states, dones
+        where each element of that is a list of corresponding values of shape [batch_size]
+        '''
 
-        batch_indexes = np.random.randint(self.__num_elements, size=self.config.minibatch_size)
-        
+        minibatch = []
 
+        for i in range(self.config.minibatch_size):
+            minibatch.append( self.replay_buffer[ np.random.randint( self.__num_elements ) ] )
+
+        states = []
+        actions = []
+        rewards = []
+        next_states = []
+        dones = []
+
+        for i in range(len(minibatch)):
+            states.append(minibatch[i][0])
+            actions.append(int(minibatch[i][1]))
+            rewards.append(minibatch[i][2])
+            next_states.append(minibatch[i][3])
+            dones.append(minibatch[i][4])
+
+        # return (
+        #     torch.tensor(states, dtype=torch.double),
+        #     torch.tensor(actions, dtype=torch.long),
+        #     torch.tensor(rewards, dtype=torch.double),
+        #     torch.tensor(next_states, dtype=torch.double),
+        #     torch.tensor(dones, dtype=torch.bool)
+        # )
+
+        return (
+            torch.tensor(np.array(states)),
+            torch.tensor(np.array(actions)),
+            torch.tensor(np.array(rewards)),
+            torch.tensor(np.array(next_states)),
+            torch.tensor(np.array(dones)),
+        )
 
 
 

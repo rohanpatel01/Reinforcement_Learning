@@ -51,16 +51,16 @@ class Q_Learning:
         # replace target weights with that of the current network's weights
         raise NotImplementedError
 
-    def build(self):
-        # builds and initializes the NN that will be used for function approximation for Q values
-        # I think this can be optional
+    def train_on_minibatch(self, minibatch, timestep):
         pass
 
     def monitor_performance(self):
         pass
 
-    def post_minibatch_updates(self):
-        pass
+    def process_state(self, state):
+        state = state.double()
+        state /= self.config.high
+        return state
 
     def train(self):
 
@@ -72,64 +72,32 @@ class Q_Learning:
             # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
+            state = self.process_state(state)
 
-            while not self.env.done:
-                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
-                next_state, reward = self.env.take_action(state, action)
-                experience_tuple = (state, action, reward, next_state, self.env.done)
-                self.replay_buffer.store(experience_tuple)
+            while True:
+                with torch.no_grad():       # new
+
+                    # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
+                    action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
+
+                    next_state, reward, done = self.env.take_action(action)
+                    next_state = self.process_state(next_state)
+
+                    experience_tuple = (state, action, reward, next_state, done)
+                    self.replay_buffer.store(experience_tuple)
+
+                # just so we pick action according to next_state
                 state = next_state
 
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
+                    self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
 
-                    minibatch = self.replay_buffer.sample_minibatch()
-
-                    # turn all the states into torch tensor array
-                    # turn all actions in to torch tensor array
-                    # compute reward based on done flags and store in torch tensor
-
-                    states, actions, rewards, next_states, dones = map(torch.tensor, *self.replay_buffer.sample_minibatch())
-                    states = states.to(dtype=torch.double)
-                    rewards = rewards.to(dtype=torch.double)
+                # self.monitor_performance(reward, self.env, timestep=self.t)
 
 
-
-
-
-                    # map, zip, torch.tensor([...]), torch.where
-
-                    # states = []
-                    # actions = []
-                    # targets = []
-                    #
-                    # for state_mini, action_mini, reward_mini, next_state_mini, done_mini in minibatch:
-                    #
-                    #     states.append(state_mini)
-                    #     actions.append(action_mini)
-                    #
-                    #     if done_mini:
-                    #         targets.append(torch.tensor(reward_mini, dtype=torch.double))
-                    #     else:
-                    #         best_action = self.get_best_action(next_state_mini, "target")
-                    #         targets.append(reward_mini + (self.config.gamma * self.get_Q_value(next_state_mini, best_action, "target").detach()))   # detach()???
-                    #
-                    # states = torch.tensor(states, dtype=torch.double)
-                    # actions = torch.tensor(actions)
-                    # targets = torch.tensor(targets)
-
-
-
-
-
-                    #     self.perform_gradient_descent(state_mini, action_mini, self.config, target=y, timestep=self.t)
-
-
-
-
-
-
-
-                self.monitor_performance(self.env, timestep=self.t)
                 self.t += 1
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
+
+                if done:
+                    break

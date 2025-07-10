@@ -28,6 +28,8 @@ class Linear(Q_Learning):
 
     def sample_action(self, env, state, epsilon, time, network_name):
 
+        state = torch.flatten(state)    # using default start_dim=0 here because
+
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
             return np.random.randint(env.numActions)
@@ -40,10 +42,10 @@ class Linear(Q_Learning):
         assert(network_name == "target" or network_name == "approx")
 
         if network_name == "target":
-            Q_actions = self.target_network.forward(state)
+            Q_actions = self.target_network(state)
 
         elif network_name == "approx":
-            Q_actions = self.approx_network.forward(state)
+            Q_actions = self.approx_network(state)
 
         # action here is an int and not a tensor so we don't need to convert it
         return Q_actions[action] # int(action.numpy())
@@ -51,61 +53,70 @@ class Linear(Q_Learning):
     # Returns index of action in action space with highest Q value
     def get_best_action(self, state, network_name) -> int:
         if network_name == "target":
-            Q_actions = self.target_network.forward(state)
+            Q_actions = self.target_network(state)
         elif network_name == "approx":
-            Q_actions = self.approx_network.forward(state)
+            Q_actions = self.approx_network(state)
 
         best_action_index = torch.argmax(Q_actions.detach())
         return best_action_index.item()
-        # return int(best_action_index.numpy())
 
-    def perform_gradient_descent(self, state, action, config, target, timestep):
+    #
+    def train_on_minibatch(self, minibatch, timestep):
+        states, actions, rewards, next_states, dones = minibatch
 
-        output = self.get_Q_value(state, action, "approx")
-        loss = self.approx_network.criterion(output, target)
+        # q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
+        # q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
 
+        states_flatten = torch.flatten(states, start_dim=1)
+        q_vals = self.approx_network(states_flatten)  # states.unsqueeze(1)
+        q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)
+
+        # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
+
+        # best_actions = torch.tensor([self.get_best_action(torch.tensor([ns], dtype=torch.double).detach(), "target") for ns in next_states])
+        #
+        # next_q_values = torch.tensor([
+        #     self.target_network(torch.tensor([ns], dtype=torch.double))[a].detach() for ns, a in zip(next_states, best_actions)
+        # ], dtype=torch.double)
+        #
+        # target = torch.where(
+        #     dones,
+        #     rewards,
+        #     rewards + (self.config.gamma * next_q_values)
+        # )
+
+        # New version added
+        with torch.no_grad():
+            next_states_flatten = torch.flatten(next_states, start_dim=1)
+            q_next_all = self.target_network(next_states_flatten)  # [batch_size, num_actions]         next_states.view(-1, 1)
+            best_actions = torch.argmax(q_next_all, dim=1)  # [batch_size]
+            next_q_values = q_next_all.gather(1, best_actions.unsqueeze(1)).squeeze(1)  # [batch_size]
+
+            # Q_target = r if done else r + gamma * max_a Q_target(s', a)
+            target = torch.where(
+                dones,
+                rewards,
+                rewards + self.config.gamma * next_q_values
+            )
+
+        self.approx_network.optimizer.zero_grad()       # moved reset optimizer to before we compute loss. was always before loss.backward() tho
+        self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
+
+        loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
-        self.approx_network.optimizer.zero_grad()
+        writer.add_scalar("Reward/train", np.average(rewards).item(), timestep)
         loss.backward()
 
-        if self.config.grad_clip:
-            torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
+        # add gradient clipping again
+        torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
 
-        # See weight and bias gradients
-        # print("Gradients for fc1 layer:")
-        # for name, param in self.approx_network.fc1.named_parameters():
-        #     if param.grad is not None:
-        #         print(f"  Parameter: {name}")
-        #         print(f"    Gradient shape: {param.grad.shape}")
-        #         print(f"    Gradient values (first 5): {param.grad.flatten()[:5]}")
-        #         print(f"    Gradient mean: {param.grad.mean().item():.6f}")
-        #         print("-" * 20)
-        #     else:
-        #         print(f"  Parameter: {name} has no gradient (check if requires_grad=True or if backward was called)")
-        #         print("-" * 20)
 
         self.approx_network.optimizer.step()
         self.approx_network.scheduler.step()
 
-    def monitor_performance(self, env, timestep):
-        # state_track = torch.tensor([0], dtype=torch.double)
-        # # action = self.get_best_action(state_track, "approx")
-        # q_best_action = self.get_Q_value(state_track, action=1, network_name="approx")
-        # # q_best_action = self.get_Q_value(state_track, action, "approx")
-        # # print("Q of state: ", state_track, " and best action ", best_action, " : ", q_best_action)
-        # writer.add_scalar("Performance/TestEnv_State_0_Action_2", q_best_action, timestep)
 
-        # Monitor average Q(s,a) over time
-        count = 0
-        sum = 0
-        for state in env.states:
-            for action in range(env.numActions):
-                state = torch.tensor([state], dtype=torch.double).detach()
-                sum += self.get_Q_value(state, action, "approx").detach()
-                count += 1
-        # Trying to check for divergence. Divergence would appear as monotonic increase in Q-values even after the policy stops improving
-        writer.add_scalar("Performance/DummyEnv_Average_Q(s,a)", sum/count, timestep)
-
+    def monitor_performance(self, reward, env, timestep):
+        writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([4], dtype=torch.double), 0, "approx"), timestep)
 
 
     def set_target_weights(self):
@@ -122,22 +133,18 @@ class LinearNN(nn.Module):
         return 1.0 - (current_step / self.config.lr_n_steps) * (1 - self.config.lr_end / self.config.lr_begin)
 
     def __init__(self, env, config):
-        # torch.manual_seed(42)
+        # torch.manual_seed(82)                   # TODO: remove this after implementing
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
         self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
-        # optimistic_bias = 2.0  # Try tuning this (e.g., 5.0, 10.0)
-        # nn.init.constant_(self.fc1.bias, optimistic_bias)
 
         self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
-        # gamma = (self.config.lr_end / self.config.lr_begin) ** (self.config.nsteps_train / self.config.step_size)
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.MSELoss()   # reduction='sum'
         print("layer weights: ", self.fc1.weight)
-
 
 
     def forward(self, x):
@@ -155,10 +162,15 @@ def summary(model, env, config):
     # Print out all Q(s,a) values
     print("State\tAction\tNext State\tReward")
 
-    for state in env.states:
+    for state_index in range(len(env.states)):
+
+        # state = torch.tensor([state], dtype=torch.double)
+        state = torch.tensor(np.array(env.states[state_index]), dtype=torch.double)
+        state = model.process_state(state)
+        state = torch.flatten(state)    # using default bc here we're not using a batch     , start_dim=1
+
         for action in range(len(env.actions)):
-            state = torch.tensor([state], dtype=torch.double)
-            print(int(state[0].numpy()), "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))
+            print(state_index, "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))    # int(state[0].numpy())
 
     print("==============================================")
     print()
@@ -166,21 +178,26 @@ def summary(model, env, config):
 
     # Get best trajectory from state 0
     state = env.reset()
+    state = model.process_state(state)
 
     states_visited = []
     actions_taken = []
     rewards_received = []
 
-    while not env.done:
+    while True:
+        state = torch.flatten(state)                             # using default bc no batch here
         best_action = model.get_best_action(state, "approx")
 
-        states_visited.append(state)
+        states_visited.append(np.average(state))    # will the averaging work?
         actions_taken.append(best_action)
 
-        next_state, reward = env.take_action(state, best_action)
+        next_state, reward, done = env.take_action(best_action)
         rewards_received.append(reward)
 
-        state = next_state
+        state = model.process_state(next_state)
+
+        if done:
+            break
 
     print("Best trajectory from Test Environment")
     for i in range(len(states_visited)):
@@ -279,7 +296,7 @@ def sample_action_test():
 
     print("State: ", state)
     print("Best action: ", best_action)
-    print(model.target_network.forward(state))
+    print(model.target_network(state))
 
     for i in range(total_runs):
         action = model.sample_action(env, state, e, "target")
@@ -387,31 +404,40 @@ def main():
     # batch_update_test()
 
     # config = LinearConfig(
-    #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000]),
-    #     lr_begin = trial.suggest_categorical("lr_begin", [0.0005 ] ),   # low=0.0005, high=0.001, step=0.0005
-    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])    # , low=0.3, high=1, step=0.1
+    #     # nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
+    #     lr_begin = trial.suggest_categorical("lr_begin", [0.005, 0.05] ),   # low=0.0005, high=0.001, step=0.0005
+    #     # epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
+    #     # lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+    #     target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 300, 400, 600]),
+    #     high = trial.suggest_categorical("high", [150, 250, 350, 450, 550]),
+    #     minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256]),
+    #     replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [1000, 10000 * 5 * 1000]),
     # )
+    # for i in range(20):
 
-    print("Starting Training")
-    # # env = SimpleEnv()     # no bootstrapping and no consultation of NN
-    env = DummyEnv()        # does everything Q-learning normally does
-    # # env = TestEnv()
-    config = LinearConfig()
-    model = Linear(env, config)
-    model.train()
-    writer.flush()
-    writer.close()
+    for i in range(10):
+        print("Starting Training")
+        config = LinearConfig()
 
-    print("Summary AFTER training")
-    summary(model, env, config)
+        # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+        env = TestEnv()         # first see if we can learn the TestEnv with random action
+
+        model = Linear(env, config)
+        model.train()
+        writer.flush()
+        writer.close()
+
+        print("Summary AFTER training")
+        summary(model, env, config)
+    # writer.add_scalar("Performance/NumTimesSeeOptimalTrajectory", total_rewards, i)
 
 
 
 if __name__ == '__main__':
     main()
-
+    #
     # storage_url = "sqlite:///db.sqlite3"
-    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="TestEnv Hyperparam Trials - More Steps", load_if_exists=True)
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="State rand int rep and normalization", load_if_exists=True)
     # study.optimize(objective, n_trials=150)
     #
     # print("Best Params: ", study.best_params)
