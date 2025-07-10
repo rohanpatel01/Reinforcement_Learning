@@ -43,10 +43,10 @@ class Linear(Q_Learning):
         assert(network_name == "target" or network_name == "approx")
 
         if network_name == "target":
-            Q_actions = self.target_network.forward(state)
+            Q_actions = self.target_network(state)
 
         elif network_name == "approx":
-            Q_actions = self.approx_network.forward(state)
+            Q_actions = self.approx_network(state)
 
         # action here is an int and not a tensor so we don't need to convert it
         return Q_actions[action] # int(action.numpy())
@@ -54,9 +54,9 @@ class Linear(Q_Learning):
     # Returns index of action in action space with highest Q value
     def get_best_action(self, state, network_name) -> int:
         if network_name == "target":
-            Q_actions = self.target_network.forward(state)
+            Q_actions = self.target_network(state)
         elif network_name == "approx":
-            Q_actions = self.approx_network.forward(state)
+            Q_actions = self.approx_network(state)
 
         best_action_index = torch.argmax(Q_actions.detach())
         return best_action_index.item()
@@ -69,7 +69,7 @@ class Linear(Q_Learning):
         # q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
 
         states_flatten = torch.flatten(states, start_dim=1)
-        q_vals = self.approx_network.forward(states_flatten)  # states.unsqueeze(1)
+        q_vals = self.approx_network(states_flatten)  # states.unsqueeze(1)
         q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)
 
         # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
@@ -89,7 +89,7 @@ class Linear(Q_Learning):
         # New version added
         with torch.no_grad():
             next_states_flatten = torch.flatten(next_states, start_dim=1)
-            q_next_all = self.target_network.forward(next_states_flatten)  # [batch_size, num_actions]         next_states.view(-1, 1)
+            q_next_all = self.target_network(next_states_flatten)  # [batch_size, num_actions]         next_states.view(-1, 1)
             best_actions = torch.argmax(q_next_all, dim=1)  # [batch_size]
             next_q_values = q_next_all.gather(1, best_actions.unsqueeze(1)).squeeze(1)  # [batch_size]
 
@@ -297,7 +297,7 @@ def sample_action_test():
 
     print("State: ", state)
     print("Best action: ", best_action)
-    print(model.target_network.forward(state))
+    print(model.target_network(state))
 
     for i in range(total_runs):
         action = model.sample_action(env, state, e, "target")
@@ -385,8 +385,8 @@ def main():
     print("Starting Training")
     config = LinearConfig()
 
-    # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-    env = TestEnv()         # first see if we can learn the TestEnv with random action
+    env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+    # env = TestEnv()         # first see if we can learn the TestEnv with random action
 
     model = Linear(env, config)
     model.train()
