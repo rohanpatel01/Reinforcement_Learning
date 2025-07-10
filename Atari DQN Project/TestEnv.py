@@ -13,6 +13,16 @@ class TestEnv:
         self.state_shape = np.array([1])
 
         self.states = [i for i in range(self.numStates)]
+
+        # Represent state using Random Floats within intervals
+        # Upon returning them from take_action() and reset() we will normalize them
+        # self.states = []
+        # state_0 = np.random.randint(0, 100)
+        # state_0 = np.random.randint(0, 100)
+        # state_0 = np.random.randint(0, 100)
+        # state_0 = np.random.randint(0, 100)
+        # state_0 = np.random.randint(0, 100)
+
         self.actions = [i for i in range(self.numActions)]
 
         self.rewards = [0.1, -0.2, 0, -0.1]

@@ -57,6 +57,10 @@ class Q_Learning:
     def monitor_performance(self):
         pass
 
+    def process_state(self, state):
+        state = state.double()
+        state /= self.config.high
+        return state
 
     def train(self):
 
@@ -68,12 +72,18 @@ class Q_Learning:
             # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
+            state = self.process_state(state)
 
-            while not self.env.done:
+            while True:
                 action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
-                next_state, reward = self.env.take_action(state, action)
-                experience_tuple = (state, action, reward, next_state, self.env.done)
+
+                next_state, reward, done = self.env.take_action(action)
+                next_state = self.process_state(next_state)
+
+                experience_tuple = (state, action, reward, next_state, done)
                 self.replay_buffer.store(experience_tuple)
+
+                # just so we pick action according to next_state
                 state = next_state
 
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
@@ -85,3 +95,6 @@ class Q_Learning:
                 self.t += 1
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
+
+                if done:
+                    break

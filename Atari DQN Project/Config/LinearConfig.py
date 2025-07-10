@@ -3,6 +3,7 @@
 class LinearConfig:
 
     def __init__(self, **kwargs):
+        self.high                            = 950.     # 255.0   they use 255. but I'm using 550. bc my state value representation goes that high
 
         self.learning_delay                  = 0         # number of timesteps to perform random actions for
 
@@ -29,7 +30,7 @@ class LinearConfig:
         self.minibatch_size = 128
         self.replay_buffer_size = self.nsteps_train * 5 * 1000  # they use 1000
         self.gamma = 1
-        self.target_weight_update_freq = 500  # was 500               # change to 4 or 5 later and see if it makes a difference - why do we not update the weights with every experience? Why do we not always have this as 1?
+        self.target_weight_update_freq = 200  # was 500               # change to 4 or 5 later and see if it makes a difference - why do we not update the weights with every experience? Why do we not always have this as 1?
         self.frame_stack_size = 1  # For TestEnv this will be 1
 
         for key, value in kwargs.items():

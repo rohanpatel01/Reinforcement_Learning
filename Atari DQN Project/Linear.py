@@ -135,8 +135,11 @@ def summary(model, env, config):
     print("State\tAction\tNext State\tReward")
 
     for state in env.states:
+
+        state = torch.tensor([state], dtype=torch.double)
+        state = model.process_state(state)
+
         for action in range(len(env.actions)):
-            state = torch.tensor([state], dtype=torch.double)
             print(int(state[0].numpy()), "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))
 
     print("==============================================")
@@ -145,21 +148,25 @@ def summary(model, env, config):
 
     # Get best trajectory from state 0
     state = env.reset()
+    state = model.process_state(state)
 
     states_visited = []
     actions_taken = []
     rewards_received = []
 
-    while not env.done:
+    while True:
         best_action = model.get_best_action(state, "approx")
 
         states_visited.append(state)
         actions_taken.append(best_action)
 
-        next_state, reward = env.take_action(state, best_action)
+        next_state, reward, done = env.take_action(best_action)
         rewards_received.append(reward)
 
-        state = next_state
+        state = model.process_state(next_state)
+
+        if done:
+            break
 
     print("Best trajectory from Test Environment")
     for i in range(len(states_visited)):

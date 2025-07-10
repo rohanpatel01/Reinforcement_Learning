@@ -1,50 +1,66 @@
 Starting Training
 layer weights:  Parameter containing:
-tensor([[-0.0693],
-        [ 0.2848],
-        [-0.6324]], dtype=torch.float64, requires_grad=True)
+tensor([[-0.3344],
+        [-0.1199],
+        [-0.4051]], dtype=torch.float64, requires_grad=True)
 layer weights:  Parameter containing:
-tensor([[-0.0740],
-        [ 0.9804],
-        [-0.9461]], dtype=torch.float64, requires_grad=True)
+tensor([[ 0.4523],
+        [ 0.8243],
+        [-0.1416]], dtype=torch.float64, requires_grad=True)
 Summary AFTER training
 
 ==============================================
 Summary: 
 State	Action	Next State	Reward
-0 		 0 		  Q(s,a)=  tensor(0.3712, dtype=torch.float64, grad_fn=<SelectBackward0>)
-0 		 1 		  Q(s,a)=  tensor(0.2060, dtype=torch.float64, grad_fn=<SelectBackward0>)
-0 		 2 		  Q(s,a)=  tensor(0.1923, dtype=torch.float64, grad_fn=<SelectBackward0>)
-1 		 0 		  Q(s,a)=  tensor(0.5302, dtype=torch.float64, grad_fn=<SelectBackward0>)
-1 		 1 		  Q(s,a)=  tensor(0.2093, dtype=torch.float64, grad_fn=<SelectBackward0>)
-1 		 2 		  Q(s,a)=  tensor(0.2319, dtype=torch.float64, grad_fn=<SelectBackward0>)
-2 		 0 		  Q(s,a)=  tensor(0.6891, dtype=torch.float64, grad_fn=<SelectBackward0>)
-2 		 1 		  Q(s,a)=  tensor(0.2127, dtype=torch.float64, grad_fn=<SelectBackward0>)
-2 		 2 		  Q(s,a)=  tensor(0.2715, dtype=torch.float64, grad_fn=<SelectBackward0>)
-3 		 0 		  Q(s,a)=  tensor(0.8480, dtype=torch.float64, grad_fn=<SelectBackward0>)
-3 		 1 		  Q(s,a)=  tensor(0.2161, dtype=torch.float64, grad_fn=<SelectBackward0>)
-3 		 2 		  Q(s,a)=  tensor(0.3111, dtype=torch.float64, grad_fn=<SelectBackward0>)
-4 		 0 		  Q(s,a)=  tensor(1.0069, dtype=torch.float64, grad_fn=<SelectBackward0>)
-4 		 1 		  Q(s,a)=  tensor(0.2194, dtype=torch.float64, grad_fn=<SelectBackward0>)
-4 		 2 		  Q(s,a)=  tensor(0.3507, dtype=torch.float64, grad_fn=<SelectBackward0>)
-5 		 0 		  Q(s,a)=  tensor(1.1658, dtype=torch.float64, grad_fn=<SelectBackward0>)
-5 		 1 		  Q(s,a)=  tensor(0.2228, dtype=torch.float64, grad_fn=<SelectBackward0>)
-5 		 2 		  Q(s,a)=  tensor(0.3903, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.3198, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.2489, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.2328, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.4065, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.2635, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.2960, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.5043, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.2800, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.3673, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.6032, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.2966, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.4393, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.6591, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.3061, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.4801, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.7663, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.3241, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.5582, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.8427, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.3370, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.6139, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(0.9611, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.3570, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.7001, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(1.0431, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.3708, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.7599, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 0 		  Q(s,a)=  tensor(1.1242, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 1 		  Q(s,a)=  tensor(0.3845, dtype=torch.float64, grad_fn=<SelectBackward0>)
+0 		 2 		  Q(s,a)=  tensor(0.8190, dtype=torch.float64, grad_fn=<SelectBackward0>)
 ==============================================
 
 Best trajectory: 
 Best trajectory from Test Environment
-State:  tensor([0.], dtype=torch.float64)  Action:  0  Reward Received:  0
-State:  tensor([1.], dtype=torch.float64)  Action:  0  Reward Received:  0
-State:  tensor([2.], dtype=torch.float64)  Action:  0  Reward Received:  0
-State:  tensor([3.], dtype=torch.float64)  Action:  0  Reward Received:  0
-State:  tensor([4.], dtype=torch.float64)  Action:  0  Reward Received:  1
+State:  tensor([0.0442], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.1421], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.2526], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.3642], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.4274], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.5484], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.6347], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.7684], dtype=torch.float64)  Action:  0  Reward Received:  0
+State:  tensor([0.8611], dtype=torch.float64)  Action:  0  Reward Received:  1
 
 Total Reward Received:  1
 Taking a look at model parameters to see if weights are changing
 Parameter containing:
-tensor([[0.1589],
-        [0.0034],
-        [0.0396]], dtype=torch.float64, requires_grad=True)
+tensor([[0.8855],
+        [0.1492],
+        [0.6453]], dtype=torch.float64, requires_grad=True)
 Parameter containing:
-tensor([0.3712, 0.2060, 0.1923], dtype=torch.float64, requires_grad=True)
+tensor([0.2806, 0.2423, 0.2043], dtype=torch.float64, requires_grad=True)
