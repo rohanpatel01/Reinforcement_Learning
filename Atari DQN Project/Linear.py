@@ -335,21 +335,26 @@ def gradient_descent_test():
     pass
 
 
-# def objective(trial):
-def main():
-    # config = LinearConfig(
-    #     nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
-    #     lr_begin = trial.suggest_categorical("lr_begin", [0.001, 0.005, 0.01, 0.05 ] ),   # low=0.0005, high=0.001, step=0.0005
-    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
-    #     lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
-    #     minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256])
-    # )
+def objective(trial):
+# def main():
+    config = LinearConfig(
+        # nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
+        lr_begin = trial.suggest_categorical("lr_begin", [0.005, 0.05] ),   # low=0.0005, high=0.001, step=0.0005
+        # epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
+        # lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+        target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 300, 400, 600]),
+        high = trial.suggest_categorical("high", [150, 250, 350, 450, 550]),
+        minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256]),
+        replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [1000, 10000 * 5 * 1000]),
+    )
     # for i in range(20):
-    print("Starting Training")
-    config = LinearConfig()
 
-    env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-    # env = TestEnv()         # first see if we can learn the TestEnv with random action
+    # for i in range(10):
+    print("Starting Training")
+    # config = LinearConfig()
+
+    # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+    env = TestEnv()         # first see if we can learn the TestEnv with random action
 
     model = Linear(env, config)
     model.train()
@@ -363,14 +368,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
 
-    # storage_url = "sqlite:///db.sqlite3"
-    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Test_Env_Testing_More_Params", load_if_exists=True)
-    # study.optimize(objective, n_trials=140)
-    #
-    # print("Best Params: ", study.best_params)
-    # print("Optimization complete. Data saved to:", storage_url)
+    storage_url = "sqlite:///db.sqlite3"
+    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="State rand int rep and normalization", load_if_exists=True)
+    study.optimize(objective, n_trials=150)
+
+    print("Best Params: ", study.best_params)
+    print("Optimization complete. Data saved to:", storage_url)
 
 
 
