@@ -10,7 +10,8 @@ class TestEnv:
 
         self.numStates = 4
         self.numActions = 5
-        self.state_shape = np.array([1])
+        # self.state_shape = np.array([1])
+        self.state_shape = (5,5,1)
 
         # self.states = [i for i in range(self.numStates)]
         self.__state_index = 0
@@ -18,10 +19,10 @@ class TestEnv:
         # Represent state using Random Floats within intervals
         # Upon returning them from take_action() and reset() we will normalize them
         # self.states = []
-        state_0 = np.random.randint(0, 50)
-        state_1 = np.random.randint(100, 150)
-        state_2 = np.random.randint(200, 250)
-        state_3 = np.random.randint(300, 350)
+        state_0 = np.random.randint(0, 50, self.state_shape)
+        state_1 = np.random.randint(100, 150, self.state_shape)
+        state_2 = np.random.randint(200, 250, self.state_shape)
+        state_3 = np.random.randint(300, 350, self.state_shape)
 
         self.states = [state_0, state_1, state_2, state_3]
 
@@ -54,7 +55,7 @@ class TestEnv:
         #     self.done = True
         self.__state_index = next_state_index
 
-        return torch.tensor([self.states[next_state_index]], dtype=torch.double), reward, self.current_time >= self.MAX_TIME_STEPS
+        return torch.tensor(np.array(self.states[next_state_index]), dtype=torch.double), reward, (self.current_time >= self.MAX_TIME_STEPS)
 
 
 
@@ -64,7 +65,7 @@ class TestEnv:
         self.current_time = 0
         self.__done = False
 
-        return torch.tensor([self.states[self.__state_index]], dtype=torch.double)
+        return torch.tensor(np.array(self.states[self.__state_index]), dtype=torch.double)
 
 
 def environmentTest():

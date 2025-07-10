@@ -385,8 +385,8 @@ def main():
         print("Starting Training")
         config = LinearConfig()
 
-        env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-        # env = TestEnv()         # first see if we can learn the TestEnv with random action
+        # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+        env = TestEnv()         # first see if we can learn the TestEnv with random action
 
         model = Linear(env, config)
         model.train()
