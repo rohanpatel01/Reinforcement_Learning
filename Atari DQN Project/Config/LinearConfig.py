@@ -3,7 +3,7 @@
 class LinearConfig:
 
     def __init__(self, **kwargs):
-        self.high                            = 550.     # 255.0   they use 255. but I'm using 550. bc my state value representation goes that high
+        self.high                            = 950. # 550. worked 50% time    # 255.0   they use 255. but I'm using 550. bc my state value representation goes that high
 
         self.learning_delay                  = 0         # number of timesteps to perform random actions for
 

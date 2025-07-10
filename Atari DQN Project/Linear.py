@@ -381,20 +381,20 @@ def main():
     # )
     # for i in range(20):
 
-    # for i in range(10):
-    print("Starting Training")
-    config = LinearConfig()
+    for i in range(10):
+        print("Starting Training")
+        config = LinearConfig()
 
-    env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-    # env = TestEnv()         # first see if we can learn the TestEnv with random action
+        env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+        # env = TestEnv()         # first see if we can learn the TestEnv with random action
 
-    model = Linear(env, config)
-    model.train()
-    writer.flush()
-    writer.close()
+        model = Linear(env, config)
+        model.train()
+        writer.flush()
+        writer.close()
 
-    print("Summary AFTER training")
-    return summary(model, env, config)
+        print("Summary AFTER training")
+        summary(model, env, config)
     # writer.add_scalar("Performance/NumTimesSeeOptimalTrajectory", total_rewards, i)
 
 
