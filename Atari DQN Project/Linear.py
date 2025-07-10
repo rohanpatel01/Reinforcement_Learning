@@ -66,17 +66,33 @@ class Linear(Q_Learning):
         q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
         q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
 
-        best_actions = torch.tensor([self.get_best_action(torch.tensor([ns], dtype=torch.double).detach(), "target") for ns in next_states])
+        # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
 
-        next_q_values = torch.tensor([
-            self.target_network(torch.tensor([ns], dtype=torch.double))[a].detach() for ns, a in zip(next_states, best_actions)
-        ], dtype=torch.double)
+        # best_actions = torch.tensor([self.get_best_action(torch.tensor([ns], dtype=torch.double).detach(), "target") for ns in next_states])
+        #
+        # next_q_values = torch.tensor([
+        #     self.target_network(torch.tensor([ns], dtype=torch.double))[a].detach() for ns, a in zip(next_states, best_actions)
+        # ], dtype=torch.double)
+        #
+        # target = torch.where(
+        #     dones,
+        #     rewards,
+        #     rewards + (self.config.gamma * next_q_values)
+        # )
 
-        target = torch.where(
-            dones,
-            rewards,
-            rewards + (self.config.gamma * next_q_values)
-        )
+        # New version added
+        with torch.no_grad():
+            q_next_all = self.target_network.forward(next_states.view(-1, 1))  # [batch_size, num_actions]
+            best_actions = torch.argmax(q_next_all, dim=1)  # [batch_size]
+            next_q_values = q_next_all.gather(1, best_actions.unsqueeze(1)).squeeze(1)  # [batch_size]
+
+            # Q_target = r if done else r + gamma * max_a Q_target(s', a)
+            target = torch.where(
+                dones,
+                rewards,
+                rewards + self.config.gamma * next_q_values
+            )
+
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
@@ -335,26 +351,26 @@ def gradient_descent_test():
     pass
 
 
-def objective(trial):
-# def main():
-    config = LinearConfig(
-        # nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
-        lr_begin = trial.suggest_categorical("lr_begin", [0.005, 0.05] ),   # low=0.0005, high=0.001, step=0.0005
-        # epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
-        # lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
-        target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 300, 400, 600]),
-        high = trial.suggest_categorical("high", [150, 250, 350, 450, 550]),
-        minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256]),
-        replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [1000, 10000 * 5 * 1000]),
-    )
+# def objective(trial):
+def main():
+    # config = LinearConfig(
+    #     # nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
+    #     lr_begin = trial.suggest_categorical("lr_begin", [0.005, 0.05] ),   # low=0.0005, high=0.001, step=0.0005
+    #     # epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]),    # , low=0.3, high=1, step=0.1
+    #     # lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+    #     target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 300, 400, 600]),
+    #     high = trial.suggest_categorical("high", [150, 250, 350, 450, 550]),
+    #     minibatch_size = trial.suggest_categorical("minibatch_size", [32, 64, 128, 256]),
+    #     replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [1000, 10000 * 5 * 1000]),
+    # )
     # for i in range(20):
 
     # for i in range(10):
     print("Starting Training")
-    # config = LinearConfig()
+    config = LinearConfig()
 
-    # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-    env = TestEnv()         # first see if we can learn the TestEnv with random action
+    env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+    # env = TestEnv()         # first see if we can learn the TestEnv with random action
 
     model = Linear(env, config)
     model.train()
@@ -368,14 +384,14 @@ def objective(trial):
 
 
 if __name__ == '__main__':
-    # main()
-
-    storage_url = "sqlite:///db.sqlite3"
-    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="State rand int rep and normalization", load_if_exists=True)
-    study.optimize(objective, n_trials=150)
-
-    print("Best Params: ", study.best_params)
-    print("Optimization complete. Data saved to:", storage_url)
+    main()
+    #
+    # storage_url = "sqlite:///db.sqlite3"
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="State rand int rep and normalization", load_if_exists=True)
+    # study.optimize(objective, n_trials=150)
+    #
+    # print("Best Params: ", study.best_params)
+    # print("Optimization complete. Data saved to:", storage_url)
 
 
 

@@ -1,0 +1,27 @@
+Starting Training
+layer weights:  Parameter containing:
+tensor([[-0.8276],
+        [-0.4954],
+        [ 0.6346]], dtype=torch.float64, requires_grad=True)
+layer weights:  Parameter containing:
+tensor([[-0.4458],
+        [ 0.3210],
+        [-0.5710]], dtype=torch.float64, requires_grad=True)
+Traceback (most recent call last):
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 387, in <module>
+    main()
+    ~~~~^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 376, in main
+    model.train()
+    ~~~~~~~~~~~^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Q_Learning.py", line 90, in train
+    self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Files\Desktop\Git Repo\Reinforcement_Learning\Atari DQN Project\Linear.py", line 97, in train_on_minibatch
+    loss = self.approx_network.criterion(q_chosen, target)
+           ^^^^
+KeyboardInterrupt
+Exception ignored in: <function _DeleteDummyThreadOnDel.__del__ at 0x0000019B641EE5C0>
+Traceback (most recent call last):
+  File "C:\Users\Rohan\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 1383, in __del__
+TypeError: 'NoneType' object does not support the context manager protocol

@@ -4,7 +4,7 @@ import torch
 class DummyEnv:
     def __init__(self):
 
-        self.numStates = 10
+        self.numStates = 6
         self.numActions = 3
         self.state_shape = np.array([1])
         
@@ -18,18 +18,18 @@ class DummyEnv:
         state_3 = np.random.randint(300, 350)
         state_4 = np.random.randint(400, 450)
         state_5 = np.random.randint(500, 550)
-        state_6 = np.random.randint(600, 650)
-        state_7 = np.random.randint(700, 750)
-        state_8 = np.random.randint(800, 850)
-        state_9 = np.random.randint(900, 950)
+        # state_6 = np.random.randint(600, 650)
+        # state_7 = np.random.randint(700, 750)
+        # state_8 = np.random.randint(800, 850)
+        # state_9 = np.random.randint(900, 950)
 
 
-        self.states = [state_0, state_1, state_2, state_3, state_4, state_5, state_6, state_7, state_8, state_9]
+        self.states = [state_0, state_1, state_2, state_3, state_4, state_5] # , state_6, state_7, state_8, state_9
 
         self.actions = [1, -1, 0]
 
-        self.rewards = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1] # 0, 0, 0, 0, 1
-        self.MAX_TIME_STEPS = 9
+        self.rewards = [0, 0, 0, 0, 0, 1] # 0, 0, 0, 0, 1
+        self.MAX_TIME_STEPS = 5
 
         self.current_time = 0
         self.__done = False
