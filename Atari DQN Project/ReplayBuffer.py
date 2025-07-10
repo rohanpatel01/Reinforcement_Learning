@@ -49,14 +49,21 @@ class ReplayBuffer:
             next_states.append(minibatch[i][3])
             dones.append(minibatch[i][4])
 
-        return (
-            torch.tensor(states, dtype=torch.double),
-            torch.tensor(actions, dtype=torch.long),
-            torch.tensor(rewards, dtype=torch.double),
-            torch.tensor(next_states, dtype=torch.double),
-            torch.tensor(dones, dtype=torch.bool)
-        )
+        # return (
+        #     torch.tensor(states, dtype=torch.double),
+        #     torch.tensor(actions, dtype=torch.long),
+        #     torch.tensor(rewards, dtype=torch.double),
+        #     torch.tensor(next_states, dtype=torch.double),
+        #     torch.tensor(dones, dtype=torch.bool)
+        # )
 
+        return (
+            torch.tensor(np.array(states)),
+            torch.tensor(np.array(actions)),
+            torch.tensor(np.array(rewards)),
+            torch.tensor(np.array(next_states)),
+            torch.tensor(np.array(dones)),
+        )
 
 
 

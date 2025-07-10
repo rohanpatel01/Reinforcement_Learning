@@ -89,7 +89,7 @@ class Q_Learning:
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
                     self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
 
-                self.monitor_performance(reward, self.env, timestep=self.t)
+                # self.monitor_performance(reward, self.env, timestep=self.t)
 
 
                 self.t += 1

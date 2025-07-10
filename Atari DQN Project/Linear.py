@@ -29,6 +29,8 @@ class Linear(Q_Learning):
 
     def sample_action(self, env, state, epsilon, time, network_name):
 
+        state = torch.flatten(state)    # using default start_dim=0 here because
+
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
             return np.random.randint(env.numActions)
@@ -63,8 +65,12 @@ class Linear(Q_Learning):
     def train_on_minibatch(self, minibatch, timestep):
         states, actions, rewards, next_states, dones = minibatch
 
-        q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
-        q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
+        # q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
+        # q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
+
+        states_flatten = torch.flatten(states, start_dim=1)
+        q_vals = self.approx_network.forward(states_flatten)  # states.unsqueeze(1)
+        q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)
 
         # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
 
@@ -82,7 +88,8 @@ class Linear(Q_Learning):
 
         # New version added
         with torch.no_grad():
-            q_next_all = self.target_network.forward(next_states.view(-1, 1))  # [batch_size, num_actions]
+            next_states_flatten = torch.flatten(next_states, start_dim=1)
+            q_next_all = self.target_network.forward(next_states_flatten)  # [batch_size, num_actions]         next_states.view(-1, 1)
             best_actions = torch.argmax(q_next_all, dim=1)  # [batch_size]
             next_q_values = q_next_all.gather(1, best_actions.unsqueeze(1)).squeeze(1)  # [batch_size]
 
@@ -150,13 +157,15 @@ def summary(model, env, config):
     # Print out all Q(s,a) values
     print("State\tAction\tNext State\tReward")
 
-    for state in env.states:
+    for state_index in range(len(env.states)):
 
-        state = torch.tensor([state], dtype=torch.double)
+        # state = torch.tensor([state], dtype=torch.double)
+        state = torch.tensor(np.array(env.states[state_index]), dtype=torch.double)
         state = model.process_state(state)
+        state = torch.flatten(state)    # using default bc here we're not using a batch     , start_dim=1
 
         for action in range(len(env.actions)):
-            print(int(state[0].numpy()), "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))
+            print(state_index, "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))    # int(state[0].numpy())
 
     print("==============================================")
     print()
@@ -171,9 +180,10 @@ def summary(model, env, config):
     rewards_received = []
 
     while True:
+        state = torch.flatten(state)                             # using default bc no batch here
         best_action = model.get_best_action(state, "approx")
 
-        states_visited.append(state)
+        states_visited.append(np.average(state))    # will the averaging work?
         actions_taken.append(best_action)
 
         next_state, reward, done = env.take_action(best_action)

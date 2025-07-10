@@ -23,7 +23,7 @@ class LinearConfig:
         # step_size                       = int(nsteps_train/3)       # every 10,000 time steps we will update the learning rate   #????? correct??
 
         self.begin_epsilon                   = 1
-        self.end_epsilon                     = 1    # 0.01
+        self.end_epsilon                     = 0.01    # 0.01
         self.epsilon_decay_percentage        = 0.7
         self.max_time_steps_update_epsilon   = self.nsteps_train * self.epsilon_decay_percentage
 
