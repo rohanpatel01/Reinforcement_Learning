@@ -34,7 +34,7 @@ class TestEnv:
         self.current_time = 0
         self.__done = False
 
-    def take_action(self, action) -> (int, int):
+    def take_action(self, action):
 
         assert(self.__done == False)
         assert(0 <= action <= len(self.actions))

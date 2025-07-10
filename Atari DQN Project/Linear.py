@@ -100,12 +100,18 @@ class Linear(Q_Learning):
                 rewards + self.config.gamma * next_q_values
             )
 
+        self.approx_network.optimizer.zero_grad()       # moved reset optimizer to before we compute loss. was always before loss.backward() tho
+        self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
         writer.add_scalar("Reward/train", np.average(rewards).item(), timestep)
-        self.approx_network.optimizer.zero_grad()
         loss.backward()
+
+        # add gradient clipping again
+        torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
+
+
         self.approx_network.optimizer.step()
         self.approx_network.scheduler.step()
 
@@ -138,7 +144,7 @@ class LinearNN(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
-        self.criterion = nn.MSELoss(reduction='sum')
+        self.criterion = nn.MSELoss()   # reduction='sum'
         print("layer weights: ", self.fc1.weight)
 
 
@@ -379,8 +385,8 @@ def main():
     print("Starting Training")
     config = LinearConfig()
 
-    env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-    # env = TestEnv()         # first see if we can learn the TestEnv with random action
+    # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+    env = TestEnv()         # first see if we can learn the TestEnv with random action
 
     model = Linear(env, config)
     model.train()

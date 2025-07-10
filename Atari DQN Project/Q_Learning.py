@@ -75,13 +75,16 @@ class Q_Learning:
             state = self.process_state(state)
 
             while True:
-                action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
+                with torch.no_grad():       # new
 
-                next_state, reward, done = self.env.take_action(action)
-                next_state = self.process_state(next_state)
+                    # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
+                    action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
 
-                experience_tuple = (state, action, reward, next_state, done)
-                self.replay_buffer.store(experience_tuple)
+                    next_state, reward, done = self.env.take_action(action)
+                    next_state = self.process_state(next_state)
+
+                    experience_tuple = (state, action, reward, next_state, done)
+                    self.replay_buffer.store(experience_tuple)
 
                 # just so we pick action according to next_state
                 state = next_state
