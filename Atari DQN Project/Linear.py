@@ -28,7 +28,7 @@ class Linear(Q_Learning):
 
     def sample_action(self, env, state, epsilon, time, network_name):
 
-        state = torch.flatten(state)    # using default start_dim=0 here because
+        # state = torch.flatten(state)    # using default start_dim=0 here because
 
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
@@ -143,7 +143,7 @@ class LinearNN(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
-        self.criterion = nn.MSELoss()   # reduction='sum'
+        self.criterion = nn.MSELoss()
         print("layer weights: ", self.fc1.weight)
 
 
@@ -167,7 +167,7 @@ def summary(model, env, config):
         # state = torch.tensor([state], dtype=torch.double)
         state = torch.tensor(np.array(env.states[state_index]), dtype=torch.double)
         state = model.process_state(state)
-        state = torch.flatten(state)    # using default bc here we're not using a batch     , start_dim=1
+        # state = torch.flatten(state)    # using default bc here we're not using a batch     , start_dim=1
 
         for action in range(len(env.actions)):
             print(state_index, "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))    # int(state[0].numpy())
@@ -185,7 +185,7 @@ def summary(model, env, config):
     rewards_received = []
 
     while True:
-        state = torch.flatten(state)                             # using default bc no batch here
+        # state = torch.flatten(state)                             # using default bc no batch here
         best_action = model.get_best_action(state, "approx")
 
         states_visited.append(np.average(state))    # will the averaging work?
@@ -415,7 +415,7 @@ def main():
     # )
     # for i in range(20):
 
-    for i in range(20):
+    for i in range(1):
         print("Starting Training")
         config = LinearConfig()
 

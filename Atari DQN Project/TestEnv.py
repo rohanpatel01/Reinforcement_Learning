@@ -6,12 +6,12 @@ def get_initial_state():
     return 0
 
 class TestEnv:
-    def __init__(self):
+    def __init__(self, shape=(5,5,1)):
 
         self.numStates = 4
         self.numActions = 5
         # self.state_shape = np.array([1])
-        self.state_shape = (5,5,1)
+        self.state_shape = shape
 
         # self.states = [i for i in range(self.numStates)]
         self.__state_index = 0

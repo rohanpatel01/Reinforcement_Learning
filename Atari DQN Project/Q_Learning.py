@@ -69,7 +69,7 @@ class Q_Learning:
 
         while self.t <= self.config.nsteps_train:
 
-            # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
+            print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state = self.env.reset()
             state = self.process_state(state)
