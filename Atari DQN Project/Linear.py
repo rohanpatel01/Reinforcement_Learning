@@ -67,8 +67,8 @@ class Linear(Q_Learning):
         # q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
         # q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
 
-        states_flatten = torch.flatten(states, start_dim=1)
-        q_vals = self.approx_network(states_flatten)  # states.unsqueeze(1)
+        # states_flatten = torch.flatten(states, start_dim=1)
+        q_vals = self.approx_network(states)  # states_flatten
         q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)
 
         # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
@@ -87,8 +87,8 @@ class Linear(Q_Learning):
 
         # New version added
         with torch.no_grad():
-            next_states_flatten = torch.flatten(next_states, start_dim=1)
-            q_next_all = self.target_network(next_states_flatten)  # [batch_size, num_actions]         next_states.view(-1, 1)
+            # next_states_flatten = torch.flatten(next_states, start_dim=1)
+            q_next_all = self.target_network(next_states)  # next_states_flatten [batch_size, num_actions]
             best_actions = torch.argmax(q_next_all, dim=1)  # [batch_size]
             next_q_values = q_next_all.gather(1, best_actions.unsqueeze(1)).squeeze(1)  # [batch_size]
 
@@ -108,7 +108,8 @@ class Linear(Q_Learning):
         loss.backward()
 
         # add gradient clipping again
-        torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
+        if self.config.grad_clip:
+            torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
 
 
         self.approx_network.optimizer.step()
@@ -188,7 +189,7 @@ def summary(model, env, config):
         # state = torch.flatten(state)                             # using default bc no batch here
         best_action = model.get_best_action(state, "approx")
 
-        states_visited.append(np.average(state))    # will the averaging work?
+        states_visited.append(np.average(state))
         actions_taken.append(best_action)
 
         next_state, reward, done = env.take_action(best_action)
@@ -209,14 +210,6 @@ def summary(model, env, config):
 
     print()
     print("Total Reward Received: ", sum(rewards_received))
-
-    print("Taking a look at model parameters to see if weights are changing")
-    print(model.approx_network.fc1.weight)
-    print(model.approx_network.fc1.bias)
-
-    # print("Configs:")
-    # print("Num nsteps_train: ", config.nsteps_train)
-    # print()
 
     return sum(rewards_received)            # rewards from the best possible trajectory
 

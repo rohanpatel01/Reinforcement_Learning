@@ -7,6 +7,8 @@ from TestEnv import TestEnv
 from torch.utils.tensorboard import SummaryWriter
 import Linear
 from Linear import Linear
+from Linear import writer
+from Linear import summary
 
 # How to connect to GPU
 # print("Pytorch version: ", torch.__version__)
@@ -51,7 +53,8 @@ class NatureQN(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=env.state_shape[-1], out_channels=32, kernel_size=8, stride=4, dtype=torch.double) # for Atari the in_channels will be 4 but for TestEnv it will be 1 bc we're not stacking
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, dtype=torch.double)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, dtype=torch.double)
-        self.fc    = nn.Linear(in_features=512, out_features=env.numActions, dtype=torch.double)
+        self.fc1 = nn.Linear(in_features=2304, out_features=512, dtype=torch.double)     # TODO: figure out in_features
+        self.fc2    = nn.Linear(in_features=512, out_features=env.numActions, dtype=torch.double)
 
         self.ReLU = nn.ReLU()
 
@@ -60,27 +63,45 @@ class NatureQN(nn.Module):
         self.criterion = nn.MSELoss()       # we're doing regression to get Q values so MSE is ok to use    - also by using MSE we assume data was sampled from gaussian distribution
 
     def forward(self, x):
+
+
+        # permute from NHWC into NCHW format for nn.Conv2d based on batch or single input
+        if len(x.shape) == 3:   # single input [height, width, num_channels]
+            x = x.permute(2, 0, 1)
+        elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
+            x = x.permute(0, 3, 1, 2)
+
         x = self.conv1(x)
         x = self.ReLU(x)
         x = self.conv2(x)
         x = self.ReLU(x)
         x = self.conv3(x)
         x = self.ReLU(x)
-        x = self.fc(x)
+
+        # Flatten based on batch or single input
+        if len(x.shape) == 3:
+            x = torch.flatten(x)
+        elif len(x.shape) == 4:
+            x = torch.flatten(x, start_dim=1)   # Required bc nn.Linear expects shape of [batch_size, in_features] but nn.Conv2d has shape [batch_size, num_channels, height, width]
+
+        x = self.fc1(x)
+        x = self.ReLU(x)
+        x = self.fc2(x)
         return x
 
 
 def main():
 
-    env = TestEnv((80, 80, 1))
-    config = NatureLinearConfig()
+    for i in range(1):
+        env = TestEnv((80, 80, 1))
+        config = NatureLinearConfig()
 
-    model = DQN(env, config)
-    model.train()
-    Linear.writer.flush()
-    Linear.writer.close()
+        model = DQN(env, config)
+        model.train()
+        writer.flush()
+        writer.close()
 
-    Linear.summary(model, env, config)
+        summary(model, env, config)
 
 
 

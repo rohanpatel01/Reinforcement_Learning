@@ -12,9 +12,8 @@ class NatureLinearConfig:
         self.learning_start                  = 200
         self.learning_freq                   = 4
 
-        self.grad_clip                       = False
+        self.grad_clip                       = True
         self.clip_val                        = 10
-
 
         self.lr_begin                        = 0.00025
         self.lr_end                          = 0.0001
