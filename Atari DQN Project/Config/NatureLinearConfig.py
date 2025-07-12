@@ -21,7 +21,7 @@ class NatureLinearConfig:
         self.lr_n_steps                      = self.nsteps_train * self.lr_decay_percentage
 
         self.begin_epsilon                   = 1
-        self.end_epsilon                     = 0.01
+        self.end_epsilon                     = 0.01 # 0.01
         self.epsilon_decay_percentage        = 0.5
         self.max_time_steps_update_epsilon   = self.nsteps_train * self.epsilon_decay_percentage
 
