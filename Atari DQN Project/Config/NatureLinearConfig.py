@@ -22,7 +22,7 @@ class NatureLinearConfig:
 
         self.begin_epsilon                   = 1
         self.end_epsilon                     = 0.01 # 0.01 # 0.01
-        self.epsilon_decay_percentage        = 0.5
+        self.epsilon_decay_percentage        = 0.7
         self.max_time_steps_update_epsilon   = self.nsteps_train * self.epsilon_decay_percentage
 
         self.minibatch_size = 32
