@@ -2,11 +2,11 @@ import numpy as np
 import torch
 
 class DummyEnv:
-    def __init__(self):
+    def __init__(self, shape=(5,5,1)):
 
         self.numStates = 10
         self.numActions = 3
-        self.state_shape = (5,5,1)
+        self.state_shape = shape
         
         self.__state_index = 0
         # self.states = [i for i in range(self.numStates)]

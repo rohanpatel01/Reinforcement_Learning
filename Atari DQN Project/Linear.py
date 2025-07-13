@@ -28,8 +28,6 @@ class Linear(Q_Learning):
 
     def sample_action(self, env, state, epsilon, time, network_name):
 
-        # state = torch.flatten(state)    # using default start_dim=0 here because
-
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
             return np.random.randint(env.numActions)
@@ -67,8 +65,7 @@ class Linear(Q_Learning):
         # q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
         # q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
 
-        # states_flatten = torch.flatten(states, start_dim=1)
-        q_vals = self.approx_network(states)  # states_flatten
+        q_vals = self.approx_network(states)
         q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)
 
         # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
@@ -87,8 +84,7 @@ class Linear(Q_Learning):
 
         # New version added
         with torch.no_grad():
-            # next_states_flatten = torch.flatten(next_states, start_dim=1)
-            q_next_all = self.target_network(next_states)  # next_states_flatten [batch_size, num_actions]
+            q_next_all = self.target_network(next_states)  # [batch_size, num_actions]
             best_actions = torch.argmax(q_next_all, dim=1)  # [batch_size]
             next_q_values = q_next_all.gather(1, best_actions.unsqueeze(1)).squeeze(1)  # [batch_size]
 
@@ -145,10 +141,16 @@ class LinearNN(nn.Module):
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
         self.criterion = nn.MSELoss()
-        print("layer weights: ", self.fc1.weight)
+        # print("layer weights: ", self.fc1.weight)
 
 
     def forward(self, x):
+
+        if len(x.shape) == 3:
+            x = torch.flatten(x)
+        elif len(x.shape) == 4:
+            x = torch.flatten(x, start_dim=1)
+
         x = self.fc1(x)
         return x
 
@@ -165,10 +167,8 @@ def summary(model, env, config):
 
     for state_index in range(len(env.states)):
 
-        # state = torch.tensor([state], dtype=torch.double)
         state = torch.tensor(np.array(env.states[state_index]), dtype=torch.double)
         state = model.process_state(state)
-        # state = torch.flatten(state)    # using default bc here we're not using a batch     , start_dim=1
 
         for action in range(len(env.actions)):
             print(state_index, "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))    # int(state[0].numpy())
@@ -186,7 +186,6 @@ def summary(model, env, config):
     rewards_received = []
 
     while True:
-        # state = torch.flatten(state)                             # using default bc no batch here
         best_action = model.get_best_action(state, "approx")
 
         states_visited.append(np.average(state))
@@ -413,7 +412,7 @@ def main():
         config = LinearConfig()
 
         # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
-        env = TestEnv()         # first see if we can learn the TestEnv with random action
+        env = TestEnv((5,5,1))         # first see if we can learn the TestEnv with random action
 
         model = Linear(env, config)
         model.train()
