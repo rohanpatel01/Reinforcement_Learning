@@ -7,7 +7,7 @@ class NatureLinearConfig:
 
         self.learning_delay                  = 0
 
-        self.nsteps_train                    = 3000 # 2000 got better performance
+        self.nsteps_train                    = 8000 # 2000 got better performance
 
         self.learning_start                  = 200
         self.learning_freq                   = 4
@@ -17,16 +17,16 @@ class NatureLinearConfig:
 
         self.lr_begin                        = 0.00025
         self.lr_end                          = 0.0001
-        self.lr_decay_percentage             = 0.5
+        self.lr_decay_percentage             = 0.4
         self.lr_n_steps                      = self.nsteps_train * self.lr_decay_percentage
 
         self.begin_epsilon                   = 1
         self.end_epsilon                     = 0.01 # 0.01 # 0.01
-        self.epsilon_decay_percentage        = 0.7
+        self.epsilon_decay_percentage        = 0.5
         self.max_time_steps_update_epsilon   = self.nsteps_train * self.epsilon_decay_percentage
 
         self.minibatch_size = 32
-        self.replay_buffer_size = 1000
+        self.replay_buffer_size = 500
         self.gamma = 0.99
         self.target_weight_update_freq = 200 # 200 got better performance
         self.frame_stack_size = 1

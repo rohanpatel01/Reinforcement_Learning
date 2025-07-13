@@ -10,6 +10,7 @@ from Linear import writer
 from Linear import summary
 import optuna
 from optuna_dashboard import run_server
+from DummyEnv import DummyEnv
 
 # How to connect to GPU
 # print("Pytorch version: ", torch.__version__)
@@ -87,26 +88,26 @@ class NatureQN(nn.Module):
         x = self.fc2(x)
         return x
 
-def objective(trial):
-# def main():
+# def objective(trial):
+def main():
 
-    config = NatureLinearConfig(
-        nsteps_train = trial.suggest_categorical("nsteps_train", [3000, 4000, 5000, 6000, 7000, 8000]),
-        target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 150, 200, 500]),
-        replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [500, 1000]),
-        epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
-        lr_begin = trial.suggest_categorical("lr_begin", [0.00025]),
-        lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
-    )
+    # config = NatureLinearConfig(
+    #     nsteps_train = trial.suggest_categorical("nsteps_train", [3000, 4000, 5000, 6000, 7000, 8000]),
+    #     target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 150, 200, 500]),
+    #     replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [500, 1000]),
+    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
+    #     lr_begin = trial.suggest_categorical("lr_begin", [0.00025]),
+    #     lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
+    # )
 
 
     MAX_REWARD = 4.1
     count_max_reward = 0
-    num_trials_test = 20
+    num_trials_test = 1
 
 
     for i in range(num_trials_test):
-        # config = NatureLinearConfig()
+        config = NatureLinearConfig()
         env = TestEnv((80, 80, 1))
 
         model = DQN(env, config)
@@ -118,7 +119,7 @@ def objective(trial):
         if total_reward == MAX_REWARD:
             count_max_reward += 1
 
-    return count_max_reward / num_trials_test
+    print("Training stability: ", count_max_reward / num_trials_test)
 
 
 
@@ -126,10 +127,10 @@ def objective(trial):
 
 
 if __name__ == '__main__':
-    # main()
-    storage_url = "sqlite:///db.sqlite3"
-    study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Find_Best_Params_DQN_TestEnv_%_Success_Test_overnight")
-    study.optimize(objective, n_trials=200)
-
-    print("Best Params: ", study.best_params)
-    print("Optimization complete. Data saved to:", storage_url)
+    main()
+    # storage_url = "sqlite:///db.sqlite3"
+    # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Find_Best_Params_DQN_TestEnv_%_Success_Test_overnight")
+    # study.optimize(objective, n_trials=200)
+    #
+    # print("Best Params: ", study.best_params)
+    # print("Optimization complete. Data saved to:", storage_url)
