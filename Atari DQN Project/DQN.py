@@ -11,22 +11,21 @@ from Linear import summary
 import optuna
 from optuna_dashboard import run_server
 from DummyEnv import DummyEnv
+import time
 
-# How to connect to GPU
-# print("Pytorch version: ", torch.__version__)
-# print("Number of GPU: ", torch.cuda.device_count())
-# print("GPU Name: ", torch.cuda.get_device_name())
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# print('Using device:', device)
+
 
 class DQN(Linear):
 
-    def __init__(self, env, config):
-        super(DQN, self).__init__(env, config)
+    def __init__(self, env, config, device):
+        super(DQN, self).__init__(env, config, device)
         self.env = env
         self.config = config
-        self.target_network = NatureQN(env, config)
-        self.approx_network = NatureQN(env, config)
+        self.device = device
+
+        self.target_network = NatureQN(env, config, device).to(device)
+        self.approx_network = NatureQN(env, config, device).to(device)
+
         self.set_target_weights()
 
 
@@ -40,11 +39,12 @@ class NatureQN(nn.Module):
 
 
     # Following Model Architecture from mnih2015human
-    def __init__(self, env, config):
+    def __init__(self, env, config, device):
         # torch.manual_seed(42)             # for testing purposes
         super(NatureQN, self).__init__()
         self.env = env
         self.config = config
+        self.device = device
 
         # self.double()
 
@@ -63,6 +63,7 @@ class NatureQN(nn.Module):
 
     def forward(self, x):
 
+        # x = x.to(self.device)   # if gpu is available we load input x into gpu to accelerate forward pass
 
         # permute from NHWC into NCHW format for nn.Conv2d based on batch or single input
         if len(x.shape) == 3:   # single input [height, width, num_channels]
@@ -86,6 +87,9 @@ class NatureQN(nn.Module):
         x = self.fc1(x)
         x = self.ReLU(x)
         x = self.fc2(x)
+
+        # x = x.to('cpu') # turning to cpu because some computations like get_best_action or computations to get target are done on cpu
+
         return x
 
 # def objective(trial):
@@ -100,24 +104,43 @@ def main():
     #     lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
     # )
 
+    # How to connect to GPU
+    print("Pytorch version: ", torch.__version__)
+    print("Number of GPU: ", torch.cuda.device_count())
+    print("GPU Name: ", torch.cuda.get_device_name())
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = 'cuda'
+    print('Using device:', device)
+
 
     MAX_REWARD = 4.1
     count_max_reward = 0
-    num_trials_test = 1
+    num_trials_test = 3
 
 
     for i in range(num_trials_test):
         config = NatureLinearConfig()
         env = TestEnv((80, 80, 1))
 
-        model = DQN(env, config)
+        model = DQN(env, config, device)
+
+        start_time = time.time()
+
         model.train()
+
+        end_time = time.time()
+
         writer.flush()
         writer.close()
 
         total_reward = summary(model, env, config)
         if total_reward == MAX_REWARD:
             count_max_reward += 1
+
+
+        elapsed_time = end_time - start_time
+
+        print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
     print("Training stability: ", count_max_reward / num_trials_test)
 
@@ -127,7 +150,9 @@ def main():
 
 
 if __name__ == '__main__':
+
     main()
+
     # storage_url = "sqlite:///db.sqlite3"
     # study = optuna.create_study(direction="maximize", storage=storage_url, study_name="Find_Best_Params_DQN_TestEnv_%_Success_Test_overnight")
     # study.optimize(objective, n_trials=200)

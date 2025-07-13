@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
+from torch.cuda import device
 from torch.utils.tensorboard import SummaryWriter
 import time
 from Q_Learning import Q_Learning
@@ -17,12 +18,13 @@ writer = SummaryWriter()
 
 class Linear(Q_Learning):
 
-    def __init__(self, env, config):
-        super(Linear, self).__init__(env, config)
+    def __init__(self, env, config, device):
+        super(Linear, self).__init__(env, config, device)
         self.env = env
         self.config = config
-        self.target_network = LinearNN(env, config)
-        self.approx_network = LinearNN(env, config)
+        self.device = device
+        self.target_network = LinearNN(env, config).to(device)
+        self.approx_network = LinearNN(env, config).to(device)
         self.set_target_weights()                   # Initially we want both target and approx network to have the same arbitrary weights
 
 
@@ -50,6 +52,7 @@ class Linear(Q_Learning):
 
     # Returns index of action in action space with highest Q value
     def get_best_action(self, state, network_name) -> int:
+        # state = state.to(self.device)
         if network_name == "target":
             Q_actions = self.target_network(state)
         elif network_name == "approx":
@@ -62,25 +65,14 @@ class Linear(Q_Learning):
     def train_on_minibatch(self, minibatch, timestep):
         states, actions, rewards, next_states, dones = minibatch
 
-        # q_vals = self.approx_network.forward(states.unsqueeze(1))        # [batch_size, num_actions]
-        # q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)    # [batch_size]
+        states = states.to(self.device)
+        actions = actions.to(self.device)
+        rewards = rewards.to(self.device)
+        next_states = next_states.to(self.device)
+        dones = dones.to(self.device)
 
         q_vals = self.approx_network(states)
         q_chosen = q_vals.gather(1, actions.unsqueeze(1)).squeeze(1)
-
-        # TODO: Issue is that the target computations are noisy and unstable because we are still not doing batch updating
-
-        # best_actions = torch.tensor([self.get_best_action(torch.tensor([ns], dtype=torch.double).detach(), "target") for ns in next_states])
-        #
-        # next_q_values = torch.tensor([
-        #     self.target_network(torch.tensor([ns], dtype=torch.double))[a].detach() for ns, a in zip(next_states, best_actions)
-        # ], dtype=torch.double)
-        #
-        # target = torch.where(
-        #     dones,
-        #     rewards,
-        #     rewards + (self.config.gamma * next_q_values)
-        # )
 
         # New version added
         with torch.no_grad():
@@ -100,7 +92,7 @@ class Linear(Q_Learning):
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
-        writer.add_scalar("Reward/train", np.average(rewards).item(), timestep)
+        writer.add_scalar("Reward/train", torch.mean(rewards), timestep)
         loss.backward()
 
         # add gradient clipping again
@@ -158,6 +150,7 @@ class LinearNN(nn.Module):
 def summary(model, env, config):
 
     state = env.reset()
+    device = model.device
 
     print()
     print("==============================================")
@@ -169,7 +162,7 @@ def summary(model, env, config):
 
         state = torch.tensor(np.array(env.states[state_index]), dtype=torch.double)
         state = model.process_state(state)
-
+        state = state.to(device)
         for action in range(len(env.actions)):
             print(state_index, "\t\t", action, "\t\t", " Q(s,a)= ", model.get_Q_value(state, action, "approx"))    # int(state[0].numpy())
 
@@ -180,6 +173,7 @@ def summary(model, env, config):
     # Get best trajectory from state 0
     state = env.reset()
     state = model.process_state(state)
+    state = state.to(device)
 
     states_visited = []
     actions_taken = []
@@ -188,13 +182,17 @@ def summary(model, env, config):
     while True:
         best_action = model.get_best_action(state, "approx")
 
-        states_visited.append(np.average(state))
+        states_visited.append(torch.mean(state))
         actions_taken.append(best_action)
 
         next_state, reward, done = env.take_action(best_action)
+        next_state = model.process_state(next_state).to(device)
+
         rewards_received.append(reward)
 
-        state = model.process_state(next_state)
+        # state = model.process_state(next_state)
+        state = next_state
+
 
         if done:
             break
@@ -394,6 +392,12 @@ def batch_update_test():
 def main():
 
     # batch_update_test()
+    # How to connect to GPU
+    print("Pytorch version: ", torch.__version__)
+    print("Number of GPU: ", torch.cuda.device_count())
+    print("GPU Name: ", torch.cuda.get_device_name())
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using device:', device)
 
     # config = LinearConfig(
     #     # nsteps_train = trial.suggest_categorical("nsteps_train", [10000, 11000, 12000, 13000, 14000, 15000]),
@@ -414,7 +418,7 @@ def main():
         # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
         env = TestEnv((5,5,1))         # first see if we can learn the TestEnv with random action
 
-        model = Linear(env, config)
+        model = Linear(env, config, device)
         model.train()
         writer.flush()
         writer.close()

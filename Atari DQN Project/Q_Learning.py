@@ -24,9 +24,10 @@ from Scheduler import EpsilonScheduler
 class Q_Learning:
     # This is a general class that creates a framework for Q learning with experience replay
 
-    def __init__(self, env, config):
+    def __init__(self, env, config, device):
         self.env = env
         self.config = config
+        self.device = device
         self.replay_buffer = ReplayBuffer(self.env.state_shape, self.config.replay_buffer_size, self.env, self.config)
         self.t = 1
 
@@ -73,6 +74,7 @@ class Q_Learning:
 
             state = self.env.reset()
             state = self.process_state(state)
+            state = state.to(self.device)
 
             while True:
                 with torch.no_grad():       # new
@@ -81,7 +83,7 @@ class Q_Learning:
                     action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
 
                     next_state, reward, done = self.env.take_action(action)
-                    next_state = self.process_state(next_state)
+                    next_state = self.process_state(next_state).to(self.device)
 
                     experience_tuple = (state, action, reward, next_state, done)
                     self.replay_buffer.store(experience_tuple)

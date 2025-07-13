@@ -7,7 +7,7 @@ class NatureLinearConfig:
 
         self.learning_delay                  = 0
 
-        self.nsteps_train                    = 8000 # 2000 got better performance
+        self.nsteps_train                    = 8000
 
         self.learning_start                  = 200
         self.learning_freq                   = 4
