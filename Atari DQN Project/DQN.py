@@ -109,13 +109,12 @@ def main():
     print("Number of GPU: ", torch.cuda.device_count())
     print("GPU Name: ", torch.cuda.get_device_name())
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # device = 'cuda'
     print('Using device:', device)
 
 
     MAX_REWARD = 4.1
     count_max_reward = 0
-    num_trials_test = 3
+    num_trials_test = 1
 
 
     for i in range(num_trials_test):
