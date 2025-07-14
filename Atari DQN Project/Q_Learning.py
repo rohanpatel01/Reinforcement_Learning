@@ -68,17 +68,22 @@ class Q_Learning:
         epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                              self.config.max_time_steps_update_epsilon)
 
+        num_episodes = 0
+        total_reward_so_far = 0
+
         while self.t <= self.config.nsteps_train:
 
-            # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
+            print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
             state, info = self.env.reset()
-            state = torch.from_numpy(state) # state returned by env.reset is a numpy array
+            state = torch.from_numpy(state)
             state = self.process_state(state)
             state = state.to(self.device)
 
+            total_reward_for_episode = 0
+
             while True:
-                with torch.no_grad():       # new
+                with torch.no_grad():
 
                     # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
                     action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
@@ -91,13 +96,15 @@ class Q_Learning:
                     experience_tuple = (state, action, reward, next_state, terminated)
                     self.replay_buffer.store(experience_tuple)
 
-                # just so we pick action according to next_state
                 state = next_state
 
                 if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
                     self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
 
-                # self.monitor_performance(reward, self.env, timestep=self.t)
+                # Measures Max_Q per timestep and evaluates agent when time comes
+                self.monitor_performance(state, reward, monitor_end_of_episode=False, timestep=self.t)    # used to have env as param
+                total_reward_so_far += reward
+                total_reward_for_episode += reward
 
 
                 self.t += 1
@@ -105,4 +112,7 @@ class Q_Learning:
                     self.set_target_weights()
 
                 if terminated:
+                    # monitor avg reward per episode and max_reward per episode (at end of episode)
+                    num_episodes += 1
+                    self.monitor_performance(state, reward, monitor_end_of_episode=True, timestep=self.t, context = (total_reward_so_far, num_episodes, total_reward_for_episode))
                     break

@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -14,7 +16,12 @@ from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
 import time
-
+import gymnasium as gym
+from gymnasium.wrappers import (
+    GrayscaleObservation,
+    ResizeObservation,
+    FrameStackObservation,
+)
 writer = SummaryWriter()
 
 class Linear(Q_Learning):
@@ -105,8 +112,63 @@ class Linear(Q_Learning):
         self.approx_network.scheduler.step()
 
 
-    def monitor_performance(self, reward, env, timestep):
-        writer.add_scalar("Performance/DummyEnv_State_Before_Terminal_Q(s,a)", self.get_Q_value(torch.tensor([4], dtype=torch.double), 0, "approx"), timestep)
+    def monitor_performance(self, state, reward, monitor_end_of_episode, timestep, context=None):
+
+        with torch.no_grad():
+
+            if monitor_end_of_episode:
+                assert(context is not None)
+
+                total_reward_so_far, num_episodes, total_reward_for_episode = context
+                writer.add_scalar("Evaluation/Avg_Reward", total_reward_so_far / num_episodes, self.t)
+                # Assuming (might be wrong) that by Max_Reward they mean max reward seen per episode, which would just be the reward at end of episode
+                writer.add_scalar("Evaluation/Max_Reward", total_reward_for_episode, self.t)
+                return
+
+            q_action_vals = self.approx_network(state)
+
+            writer.add_scalar("Evaluation/STDV", torch.std(q_action_vals), timestep)    # measure the standard deviation - it shouldn't be too small bc otherwise means all states have similar q values (not good)
+            writer.add_scalar("Evaluation/Max_Q", torch.max(q_action_vals), timestep)
+
+            if timestep % self.config.eval_freq == 0:
+                # TODO: Use state to track the max_q when we do a forward pass
+                eval_env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4,
+                               repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
+                eval_env = GrayscaleObservation(eval_env, keep_dim=False)
+                eval_env = ResizeObservation(eval_env, shape=(80, 80))
+                eval_env = FrameStackObservation(eval_env, stack_size=4)
+
+                total_reward = 0
+
+                for episode in range(self.config.num_episodes_test):
+
+
+                    state, info = eval_env.reset()
+                    state = torch.from_numpy(state)
+                    state = self.process_state(state)
+                    state = state.to(self.device)
+
+                    while True:
+                        with torch.no_grad():
+
+                            action = self.sample_action(eval_env, state,
+                                                        self.config.soft_epsilon,
+                                                        self.t, "approx")
+
+                            # next_state, reward, done = self.env.take_action(action)
+                            next_state, reward, terminated, truncated, info = eval_env.step(action)
+                            next_state = torch.from_numpy(next_state)
+                            next_state = self.process_state(next_state).to(self.device)
+                            state = next_state
+
+                            total_reward += reward
+                            if terminated:
+                                break
+
+                # We are just monitoring the number of win/loss (+1, -1) to monitor the Eval_reward
+                writer.add_scalar("Evaluation/Avg_Eval_Reward", total_reward/self.config.num_episodes_test, timestep)
+
+
 
 
     def set_target_weights(self):

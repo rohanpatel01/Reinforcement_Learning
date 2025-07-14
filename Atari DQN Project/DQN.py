@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch import optim
 from Config.NatureLinearConfig import NatureLinearConfig
+from Config.AtariLinearConfig import AtariLinearConfig
 from TestEnv import TestEnv
 import Linear
 from Linear import Linear
@@ -23,8 +24,6 @@ from gymnasium.wrappers import (
     GrayscaleObservation,
     ResizeObservation,
     FrameStackObservation,
-    ReshapeObservation,
-    TransformObservation,   # might need this bc input to nn expects NCHW
 )
 
 
@@ -149,7 +148,8 @@ def main():
 
         # print(env.action_space.n)
 
-        config = NatureLinearConfig()
+        # config = NatureLinearConfig()
+        config = AtariLinearConfig()
         print(gym.envs.registration.registry.keys())
         # frameskip=4 means that The ALE backend will repeat the last chosen action for 4 frames internally, and return only every 4th frame.
         # TODO: might be an issue if we want to record the game bc will be in lower framerate so might change this later
