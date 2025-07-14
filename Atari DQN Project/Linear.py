@@ -13,6 +13,7 @@ from Config.LinearConfig import LinearConfig
 from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
+import time
 
 writer = SummaryWriter()
 
@@ -126,7 +127,7 @@ class LinearNN(nn.Module):
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
-        self.fc1 = nn.Linear(np.prod(self.env.state_shape)*self.config.frame_stack_size, self.env.numActions)
+        self.fc1 = nn.Linear(np.prod(self.env.observation_space.shape), self.env.action_space.n)
 
         self.double()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
@@ -396,7 +397,7 @@ def main():
     print("Pytorch version: ", torch.__version__)
     print("Number of GPU: ", torch.cuda.device_count())
     print("GPU Name: ", torch.cuda.get_device_name())
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')   # Note: for smaller environments (e.g (5,5,1)) cpu is faster (~5s cpu vs ~15s gpu) but larger envs (e.g (80,80,1)) the gpu is faster. This is likely due to having to move data from cpu to gpu takes longer and by comparison the compute time for small envs is neglegible
     print('Using device:', device)
 
     # config = LinearConfig(
@@ -411,20 +412,29 @@ def main():
     # )
     # for i in range(20):
 
-    for i in range(10):
+    for i in range(1):
         print("Starting Training")
         config = LinearConfig()
 
-        # env = DummyEnv()      # maybe the optimal path is too improbable because the reward of 1 only comes after 9 successive random guesses of taking action index 0 (move right)
+
         env = TestEnv((5,5,1))         # first see if we can learn the TestEnv with random action
 
         model = Linear(env, config, device)
+
+        start_time = time.time()
         model.train()
+        end_time = time.time()
+
+        elapsed_time = end_time - start_time
+
+        print(f"Elapsed time: {elapsed_time:.6f} seconds")
+
         writer.flush()
         writer.close()
 
         print("Summary AFTER training")
         summary(model, env, config)
+
     # writer.add_scalar("Performance/NumTimesSeeOptimalTrajectory", total_rewards, i)
 
 

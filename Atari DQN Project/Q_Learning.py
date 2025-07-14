@@ -28,7 +28,7 @@ class Q_Learning:
         self.env = env
         self.config = config
         self.device = device
-        self.replay_buffer = ReplayBuffer(self.env.state_shape, self.config.replay_buffer_size, self.env, self.config)
+        self.replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.env, self.config)
         self.t = 1
 
     def sample_action(self, env, state, epsilon, time, network_name):
@@ -72,7 +72,8 @@ class Q_Learning:
 
             # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
-            state = self.env.reset()
+            state, info = self.env.reset()
+            state = torch.from_numpy(state) # state returned by env.reset is a numpy array
             state = self.process_state(state)
             state = state.to(self.device)
 
@@ -82,7 +83,8 @@ class Q_Learning:
                     # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
                     action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
 
-                    next_state, reward, done = self.env.take_action(action)
+                    next_state, reward, done = self.env.take_action(action) # needs to change to match Atari env
+                    next_state = torch.from_numpy(next_state)
                     next_state = self.process_state(next_state).to(self.device)
 
                     experience_tuple = (state, action, reward, next_state, done)

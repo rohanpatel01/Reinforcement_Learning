@@ -4,7 +4,7 @@ import torch
 
 
 class ReplayBuffer:
-    def __init__(self, state_shape, size, env, config):
+    def __init__(self, size, env, config):
         self.size = size
         self.config = config
         self.__MAX_SIZE = self.config.replay_buffer_size

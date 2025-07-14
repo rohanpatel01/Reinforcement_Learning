@@ -12,6 +12,19 @@ import optuna
 from optuna_dashboard import run_server
 from DummyEnv import DummyEnv
 import time
+import ale_py
+import gymnasium as gym
+
+
+# Note: You can access the environment underneath the first wrapper by using the gymnasium.Wrapper.env attribute.
+#       If you want to get to the environment underneath all of the layers of wrappers, you can use the gymnasium.Wrapper.unwrapped attribute
+
+from gymnasium.wrappers import (
+    GrayscaleObservation,
+    ResizeObservation,
+    FrameStackObservation,
+    TransformObservation
+)
 
 
 
@@ -53,7 +66,7 @@ class NatureQN(nn.Module):
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, dtype=torch.double)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, dtype=torch.double)
         self.fc1 = nn.Linear(in_features=2304, out_features=512, dtype=torch.double)
-        self.fc2    = nn.Linear(in_features=512, out_features=env.numActions, dtype=torch.double)  # 512  25
+        self.fc2    = nn.Linear(in_features=512, out_features=env.action_space.n, dtype=torch.double)  # 512  25
 
         self.ReLU = nn.ReLU()
 
@@ -118,15 +131,37 @@ def main():
 
 
     for i in range(num_trials_test):
-        config = NatureLinearConfig()
-        env = TestEnv((80, 80, 1))
 
-        model = DQN(env, config, device)
+
+        # env = TestEnv((80, 80, 1))
+
+        # preprocessing is pixel-wise max-pooling of last 2 observations
+        # Convert to gray scale
+        # Rescale to (80, 80, 1)
+        # for each time we decide on an action, we perform that action for 4 time steps
+
+        # metrics to track for training over number of timesteps
+        # Eval_reward: every x amount of timesteps we run a few episodes and evaluate the reward our agent gets
+        # Max_reward: I believe this is the max reward that the agent has seen during evaluation
+        # Max_Q: as we perform forward passes we want to track the max Q value we see
+        # Avg_reward: ^^^ same thing but the reward that we see
+
+
+
+        # print(env.action_space.n)
+
+        config = NatureLinearConfig()
+        print(gym.envs.registration.registry.keys())
+        env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=(2, 5), repeat_action_probability=0.25)
+        env = GrayscaleObservation(env, keep_dim=True)
+        env = ResizeObservation(env, shape=(80, 80))
+        env = FrameStackObservation(env, stack_size=4)
+
+        # model = DQN(env, config, device)
+        model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
 
         start_time = time.time()
-
         model.train()
-
         end_time = time.time()
 
         writer.flush()
