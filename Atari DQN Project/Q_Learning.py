@@ -83,11 +83,12 @@ class Q_Learning:
                     # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
                     action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
 
-                    next_state, reward, done = self.env.take_action(action) # needs to change to match Atari env
+                    # next_state, reward, done = self.env.take_action(action)
+                    next_state, reward, terminated, truncated, info = self.env.step(action)
                     next_state = torch.from_numpy(next_state)
                     next_state = self.process_state(next_state).to(self.device)
 
-                    experience_tuple = (state, action, reward, next_state, done)
+                    experience_tuple = (state, action, reward, next_state, terminated)
                     self.replay_buffer.store(experience_tuple)
 
                 # just so we pick action according to next_state
@@ -103,5 +104,5 @@ class Q_Learning:
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
                     self.set_target_weights()
 
-                if done:
+                if terminated:
                     break

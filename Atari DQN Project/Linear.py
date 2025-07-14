@@ -33,7 +33,7 @@ class Linear(Q_Learning):
 
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
-            return np.random.randint(env.numActions)
+            return np.random.randint(env.action_space.n)  # numActions
         else:
             # select greedy action
             return self.get_best_action(state, network_name)

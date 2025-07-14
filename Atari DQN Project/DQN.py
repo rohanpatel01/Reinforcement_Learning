@@ -23,7 +23,8 @@ from gymnasium.wrappers import (
     GrayscaleObservation,
     ResizeObservation,
     FrameStackObservation,
-    TransformObservation
+    ReshapeObservation,
+    TransformObservation,   # might need this bc input to nn expects NCHW
 )
 
 
@@ -76,13 +77,13 @@ class NatureQN(nn.Module):
 
     def forward(self, x):
 
-        # x = x.to(self.device)   # if gpu is available we load input x into gpu to accelerate forward pass
-
         # permute from NHWC into NCHW format for nn.Conv2d based on batch or single input
-        if len(x.shape) == 3:   # single input [height, width, num_channels]
-            x = x.permute(2, 0, 1)
-        elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
-            x = x.permute(0, 3, 1, 2)
+
+        # For Atari environment no need to permute bc already in format NCHW
+        # if len(x.shape) == 3:   # single input [height, width, num_channels]
+        #     x = x.permute(2, 0, 1)
+        # elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
+        #     x = x.permute(0, 3, 1, 2)
 
         x = self.conv1(x)
         x = self.ReLU(x)
@@ -91,7 +92,7 @@ class NatureQN(nn.Module):
         x = self.conv3(x)
         x = self.ReLU(x)
 
-        # un-permute before we flatten - maybe that is causing values to be weird
+        # un-permute before we flatten
         if len(x.shape) == 3:   # single input [height, width, num_channels]
             x = torch.flatten(x)
         elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
@@ -100,8 +101,6 @@ class NatureQN(nn.Module):
         x = self.fc1(x)
         x = self.ReLU(x)
         x = self.fc2(x)
-
-        # x = x.to('cpu') # turning to cpu because some computations like get_best_action or computations to get target are done on cpu
 
         return x
 
@@ -118,15 +117,15 @@ def main():
     # )
 
     # How to connect to GPU
-    print("Pytorch version: ", torch.__version__)
-    print("Number of GPU: ", torch.cuda.device_count())
-    print("GPU Name: ", torch.cuda.get_device_name())
+    # print("Pytorch version: ", torch.__version__)
+    # print("Number of GPU: ", torch.cuda.device_count())
+    # print("GPU Name: ", torch.cuda.get_device_name())
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Using device:', device)
+    # print('Using device:', device)
 
 
-    MAX_REWARD = 4.1
-    count_max_reward = 0
+    # MAX_REWARD = 4.1
+    # count_max_reward = 0
     num_trials_test = 1
 
 
@@ -152,10 +151,12 @@ def main():
 
         config = NatureLinearConfig()
         print(gym.envs.registration.registry.keys())
-        env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=(2, 5), repeat_action_probability=0.25)
-        env = GrayscaleObservation(env, keep_dim=True)
+        # frameskip=4 means that The ALE backend will repeat the last chosen action for 4 frames internally, and return only every 4th frame.
+        # TODO: might be an issue if we want to record the game bc will be in lower framerate so might change this later
+        env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4, repeat_action_probability=0) # repeat action prob can help show robustness - maybe try this after we train it
+        env = GrayscaleObservation(env, keep_dim=False)
         env = ResizeObservation(env, shape=(80, 80))
-        env = FrameStackObservation(env, stack_size=4)
+        env = FrameStackObservation(env, stack_size=4)  # we will treat the stacked frames as the channels
 
         # model = DQN(env, config, device)
         model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
@@ -167,16 +168,16 @@ def main():
         writer.flush()
         writer.close()
 
-        total_reward = summary(model, env, config)
-        if total_reward == MAX_REWARD:
-            count_max_reward += 1
+        # total_reward = summary(model, env, config)
+        # if total_reward == MAX_REWARD:
+        #     count_max_reward += 1
 
 
         elapsed_time = end_time - start_time
 
         print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
-    print("Training stability: ", count_max_reward / num_trials_test)
+    # print("Training stability: ", count_max_reward / num_trials_test)
 
 
 
