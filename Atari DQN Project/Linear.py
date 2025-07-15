@@ -23,11 +23,13 @@ import gymnasium as gym
 from gymnasium.wrappers import (
     GrayscaleObservation,
     ResizeObservation,
-    FrameStackObservation,
+    FrameStackObservation, RecordVideo,
 )
 import os
 
 writer = SummaryWriter()
+video_dir = "videos/"
+os.makedirs(video_dir, exist_ok=True)
 
 class Linear(Q_Learning):
 
@@ -137,13 +139,25 @@ class Linear(Q_Learning):
                 writer.add_scalar("Evaluation/Max_Reward", total_reward_for_episode, self.t)
                 return
 
+            # Note: episode has not terminated
             q_action_vals = self.approx_network(state)
 
             writer.add_scalar("Evaluation/STDV", torch.std(q_action_vals), timestep)    # measure the standard deviation - it shouldn't be too small bc otherwise means all states have similar q values (not good)
             writer.add_scalar("Evaluation/Max_Q", torch.max(q_action_vals), timestep)
 
+            # Note: we only evaluate/record if it's not the end of an episode (above check handles assuring this)
+            # This is necessary bc we want to check every timestep if we need to evaluate, otherwise we may miss it bc current episode hasn't terminated
             if timestep % self.config.eval_freq == 0:
                 # TODO: Use state to track the max_q when we do a forward pass
+                record_env = gym.make("ALE/Pong-v5", obs_type="rgb", render_mode="rgb_array", frameskip=4, repeat_action_probability=0)   # rgb_array needed for video recording
+                record_env = RecordVideo(
+                    record_env,
+                    video_folder="pong",
+                    name_prefix="eval",
+                    episode_trigger=lambda x: (x==0) and ((timestep % self.config.record_freq) == 0)      # internally, the env has a counter and it consults episode_trigger's boolean value of whether it should record that episode or not
+                )
+
+
                 eval_env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4,
                                repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
                 eval_env = GrayscaleObservation(eval_env, keep_dim=False)
@@ -154,8 +168,11 @@ class Linear(Q_Learning):
 
                 for episode in range(self.config.num_episodes_test):
 
+                    # Note: Using same seed so that states and actions of Record env and eval_env match so that
+                    # we see exactly the states the agent performs the actions in - but just that we record in color and not the preprocessed version we pass to the NN
+                    record_env.reset(seed=42)
 
-                    state, info = eval_env.reset()
+                    state, info = eval_env.reset(seed=42)
                     state = torch.from_numpy(state)
                     state = self.process_state(state)
                     state = state.to(self.device)
@@ -169,6 +186,8 @@ class Linear(Q_Learning):
 
                             # next_state, reward, done = self.env.take_action(action)
                             next_state, reward, terminated, truncated, info = eval_env.step(action)
+                            record_env.step(action) # no need to track values returned from function
+
                             next_state = torch.from_numpy(next_state)
                             next_state = self.process_state(next_state).to(self.device)
                             state = next_state
@@ -177,8 +196,10 @@ class Linear(Q_Learning):
                             if terminated:
                                 break
 
+                # Done with episodes
                 # We are just monitoring the number of win/loss (+1, -1) to monitor the Eval_reward
                 writer.add_scalar("Evaluation/Avg_Eval_Reward", total_reward/self.config.num_episodes_test, timestep)
+                record_env.close()  # close to flush video to file
 
     def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
         snapshot = {

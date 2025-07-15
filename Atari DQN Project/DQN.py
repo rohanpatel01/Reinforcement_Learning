@@ -27,6 +27,7 @@ from gymnasium.wrappers import (
     GrayscaleObservation,
     ResizeObservation,
     FrameStackObservation,
+    RecordVideo
 )
 
 
@@ -49,42 +50,40 @@ class DQN(Linear):
         self.num_episodes = 0
         self.total_reward_so_far = 0
 
-    # def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
-    #     snapshot = {
-    #         "timestep" : self.t,
-    #         "num_episodes" : num_episodes,
-    #         "total_reward_so_far" : total_reward_so_far,
-    #         "replay_buffer_list" : replay_buffer.replay_buffer,
-    #         "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
-    #         "replay_buffer_num_elements" : replay_buffer.num_elements,
-    #         "approx_network_state_dict" : self.approx_network.state_dict(),
-    #         "target_network_state_dict" : self.target_network.state_dict()
-    #     }
-    #
-    #     torch.save(snapshot, "snapshot.pt")
-    #
-    #
-    # def load_snapshot(self):
-    #
-    #     if not os.path.exists("snapshot.pt"):
-    #         print("Attempted to load snapshot which does not exist - skipping")
-    #         return
-    #
-    #     snapshot = torch.load("snapshot.pt")
-    #
-    #     self.t = snapshot["timestep"]
-    #     self.num_episodes = snapshot["num_episodes"]
-    #     self.total_reward_so_far = snapshot["total_reward_so_far"]
-    #
-    #     self.replay_buffer.replay_buffer = snapshot["replay_buffer_list"]
-    #     self.replay_buffer.next_replay_location = snapshot["replay_buffer_next_replay_location"]
-    #     self.replay_buffer.num_elements = snapshot["replay_buffer_num_elements"]
-    #
-    #     self.approx_network.load_state_dict(snapshot["approx_network_state_dict"])
-    #     self.target_network.load_state_dict(snapshot["target_network_state_dict"])
+
+    def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
+        snapshot = {
+            "timestep" : self.t,
+            "num_episodes" : num_episodes,
+            "total_reward_so_far" : total_reward_so_far,
+            "replay_buffer_list" : replay_buffer.replay_buffer,
+            "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
+            "replay_buffer_num_elements" : replay_buffer.num_elements,
+            "approx_network_state_dict" : self.approx_network.state_dict(),
+            "target_network_state_dict" : self.target_network.state_dict()
+        }
+
+        torch.save(snapshot, "snapshot.pt")
 
 
+    def load_snapshot(self):
 
+        if not os.path.exists("snapshot.pt"):
+            print("Attempted to load snapshot which does not exist - skipping")
+            return
+
+        snapshot = torch.load("snapshot.pt")
+
+        self.t = snapshot["timestep"]
+        self.num_episodes = snapshot["num_episodes"]
+        self.total_reward_so_far = snapshot["total_reward_so_far"]
+
+        self.replay_buffer.replay_buffer = snapshot["replay_buffer_list"]
+        self.replay_buffer.next_replay_location = snapshot["replay_buffer_next_replay_location"]
+        self.replay_buffer.num_elements = snapshot["replay_buffer_num_elements"]
+
+        self.approx_network.load_state_dict(snapshot["approx_network_state_dict"])
+        self.target_network.load_state_dict(snapshot["target_network_state_dict"])
 
 class NatureQN(nn.Module):
 
@@ -173,24 +172,6 @@ def main():
 
     for i in range(num_trials_test):
 
-
-        # env = TestEnv((80, 80, 1))
-
-        # preprocessing is pixel-wise max-pooling of last 2 observations
-        # Convert to gray scale
-        # Rescale to (80, 80, 1)
-        # for each time we decide on an action, we perform that action for 4 time steps
-
-        # metrics to track for training over number of timesteps
-        # Eval_reward: every x amount of timesteps we run a few episodes and evaluate the reward our agent gets
-        # Max_reward: I believe this is the max reward that the agent has seen during evaluation
-        # Max_Q: as we perform forward passes we want to track the max Q value we see
-        # Avg_reward: ^^^ same thing but the reward that we see
-
-
-
-        # print(env.action_space.n)
-
         # config = NatureLinearConfig()
         config = AtariLinearConfig()
         print(gym.envs.registration.registry.keys())
@@ -203,7 +184,7 @@ def main():
 
         # model = DQN(env, config, device)
         model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
-        model.load_snapshot()
+        # model.load_snapshot() # just right now I don't want to load the snapshot
         start_time = time.time()
         model.train()
         end_time = time.time()
