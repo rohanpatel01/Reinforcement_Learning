@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch import optim
 from Config.NatureLinearConfig import NatureLinearConfig
 from Config.AtariLinearConfig import AtariLinearConfig
+from Config.AtariDQNConfig import AtariDQNConfig
 from TestEnv import TestEnv
 import Linear
 from Linear import Linear
@@ -104,7 +105,7 @@ class NatureQN(nn.Module):
         # self.double()
 
         # Note default data type for nn.Conv2d weights and biases are float so we change to double to match state datatype
-        self.conv1 = nn.Conv2d(in_channels=env.state_shape[-1], out_channels=32, kernel_size=8, stride=4, dtype=torch.double) # for Atari the in_channels will be 4 but for TestEnv it will be 1 bc we're not stacking
+        self.conv1 = nn.Conv2d(in_channels=env.observation_space.shape[0], out_channels=32, kernel_size=8, stride=4, dtype=torch.double) # for Atari the in_channels will be 4 but for TestEnv it will be 1 bc we're not stacking     state_shape[-1]
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, dtype=torch.double)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, dtype=torch.double)
         self.fc1 = nn.Linear(in_features=2304, out_features=512, dtype=torch.double)
@@ -162,6 +163,7 @@ def main():
     # print("Number of GPU: ", torch.cuda.device_count())
     # print("GPU Name: ", torch.cuda.get_device_name())
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print("device: ", device)
     # print('Using device:', device)
 
 
@@ -173,7 +175,8 @@ def main():
     for i in range(num_trials_test):
 
         # config = NatureLinearConfig()
-        config = AtariLinearConfig()
+        # config = AtariLinearConfig()
+        config = AtariDQNConfig()
         print(gym.envs.registration.registry.keys())
         # frameskip=4 means that The ALE backend will repeat the last chosen action for 4 frames internally, and return only every 4th frame.
         # TODO: might be an issue if we want to record the game bc will be in lower framerate so might change this later
@@ -182,8 +185,8 @@ def main():
         env = ResizeObservation(env, shape=(80, 80))
         env = FrameStackObservation(env, stack_size=4)  # we will treat the stacked frames as the channels
 
-        # model = DQN(env, config, device)
-        model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
+        model = DQN(env, config, device)
+        # model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
         # model.load_snapshot() # just right now I don't want to load the snapshot
         start_time = time.time()
         model.train()
