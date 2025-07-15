@@ -8,15 +8,15 @@ class ReplayBuffer:
         self.size = size
         self.config = config
         self.__MAX_SIZE = self.config.replay_buffer_size
-        self.__next_replay_location = 0
-        self.__num_elements = 0
+        self.next_replay_location = 0
+        self.num_elements = 0
         self.replay_buffer = np.array([None for i in range(self.__MAX_SIZE)])           # stores tuples of experiences where each state in the tuple is a stack of the previous 4 states (including that current state in the stack)
         self.env = env
 
     def store(self, experience_tuple):
-        self.replay_buffer[self.__next_replay_location] = experience_tuple
-        self.__next_replay_location = (self.__next_replay_location + 1) % self.__MAX_SIZE
-        self.__num_elements  = min(self.__num_elements + 1, self.__MAX_SIZE)
+        self.replay_buffer[self.next_replay_location] = experience_tuple
+        self.next_replay_location = (self.next_replay_location + 1) % self.__MAX_SIZE
+        self.num_elements  = min(self.num_elements + 1, self.__MAX_SIZE)
 
 
     def sample_minibatch(self):
@@ -24,7 +24,7 @@ class ReplayBuffer:
         minibatch = []
 
         for i in range(self.config.minibatch_size):
-            minibatch.append( self.replay_buffer[ np.random.randint( self.__num_elements ) ] )
+            minibatch.append( self.replay_buffer[ np.random.randint( self.num_elements ) ] )
 
         states = []
         actions = []

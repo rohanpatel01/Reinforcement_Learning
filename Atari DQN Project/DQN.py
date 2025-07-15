@@ -15,6 +15,9 @@ from DummyEnv import DummyEnv
 import time
 import ale_py
 import gymnasium as gym
+from ReplayBuffer import ReplayBuffer
+from datetime import datetime
+import os
 
 
 # Note: You can access the environment underneath the first wrapper by using the gymnasium.Wrapper.env attribute.
@@ -40,6 +43,46 @@ class DQN(Linear):
         self.approx_network = NatureQN(env, config, device).to(device)
 
         self.set_target_weights()
+
+        self.t = 1                  # have our own time so we can load it from disk
+        self.replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.env, self.config)       # have our own replay buffer so that we can load it in from disk
+        self.num_episodes = 0
+        self.total_reward_so_far = 0
+
+    # def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
+    #     snapshot = {
+    #         "timestep" : self.t,
+    #         "num_episodes" : num_episodes,
+    #         "total_reward_so_far" : total_reward_so_far,
+    #         "replay_buffer_list" : replay_buffer.replay_buffer,
+    #         "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
+    #         "replay_buffer_num_elements" : replay_buffer.num_elements,
+    #         "approx_network_state_dict" : self.approx_network.state_dict(),
+    #         "target_network_state_dict" : self.target_network.state_dict()
+    #     }
+    #
+    #     torch.save(snapshot, "snapshot.pt")
+    #
+    #
+    # def load_snapshot(self):
+    #
+    #     if not os.path.exists("snapshot.pt"):
+    #         print("Attempted to load snapshot which does not exist - skipping")
+    #         return
+    #
+    #     snapshot = torch.load("snapshot.pt")
+    #
+    #     self.t = snapshot["timestep"]
+    #     self.num_episodes = snapshot["num_episodes"]
+    #     self.total_reward_so_far = snapshot["total_reward_so_far"]
+    #
+    #     self.replay_buffer.replay_buffer = snapshot["replay_buffer_list"]
+    #     self.replay_buffer.next_replay_location = snapshot["replay_buffer_next_replay_location"]
+    #     self.replay_buffer.num_elements = snapshot["replay_buffer_num_elements"]
+    #
+    #     self.approx_network.load_state_dict(snapshot["approx_network_state_dict"])
+    #     self.target_network.load_state_dict(snapshot["target_network_state_dict"])
+
 
 
 
@@ -160,7 +203,7 @@ def main():
 
         # model = DQN(env, config, device)
         model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
-
+        model.load_snapshot()
         start_time = time.time()
         model.train()
         end_time = time.time()

@@ -30,6 +30,8 @@ class Q_Learning:
         self.device = device
         self.replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.env, self.config)
         self.t = 1
+        self.num_episodes = 0
+        self.total_reward_so_far = 0
 
     def sample_action(self, env, state, epsilon, time, network_name):
         # sample an action with e-greedy policy given by input parameter
@@ -63,17 +65,27 @@ class Q_Learning:
         state /= self.config.high
         return state
 
+    def save_snapshop(self):
+        pass
+
+    def load_snapshot(self):
+        pass
+
+
     def train(self):
 
         epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                              self.config.max_time_steps_update_epsilon)
 
-        num_episodes = 0
-        total_reward_so_far = 0
+        time_last_saved = self.t
 
         while self.t <= self.config.nsteps_train:
 
             print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
+
+            if (self.t - time_last_saved) >= self.config.saving_freq:
+                self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer)
+                time_last_saved = self.t
 
             state, info = self.env.reset()
             state = torch.from_numpy(state)
@@ -103,9 +115,8 @@ class Q_Learning:
 
                 # Measures Max_Q per timestep and evaluates agent when time comes
                 self.monitor_performance(state, reward, monitor_end_of_episode=False, timestep=self.t)    # used to have env as param
-                total_reward_so_far += reward
+                self.total_reward_so_far += reward
                 total_reward_for_episode += reward
-
 
                 self.t += 1
                 if (self.t > self.config.learning_start) and (self.t % self.config.target_weight_update_freq == 0):
@@ -113,6 +124,6 @@ class Q_Learning:
 
                 if terminated:
                     # monitor avg reward per episode and max_reward per episode (at end of episode)
-                    num_episodes += 1
-                    self.monitor_performance(state, reward, monitor_end_of_episode=True, timestep=self.t, context = (total_reward_so_far, num_episodes, total_reward_for_episode))
+                    self.num_episodes += 1
+                    self.monitor_performance(state, reward, monitor_end_of_episode=True, timestep=self.t, context = (self.total_reward_so_far, self.num_episodes, total_reward_for_episode))
                     break

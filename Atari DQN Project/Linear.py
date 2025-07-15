@@ -12,16 +12,21 @@ from TestEnv import TestEnv
 from DummyEnv import DummyEnv
 from SimpleEnv import SimpleEnv
 from Config.LinearConfig import LinearConfig
+from ReplayBuffer import ReplayBuffer
 from Scheduler import EpsilonScheduler
 import optuna
 from optuna_dashboard import run_server
 import time
+
 import gymnasium as gym
+
 from gymnasium.wrappers import (
     GrayscaleObservation,
     ResizeObservation,
     FrameStackObservation,
 )
+import os
+
 writer = SummaryWriter()
 
 class Linear(Q_Learning):
@@ -34,6 +39,13 @@ class Linear(Q_Learning):
         self.target_network = LinearNN(env, config).to(device)
         self.approx_network = LinearNN(env, config).to(device)
         self.set_target_weights()                   # Initially we want both target and approx network to have the same arbitrary weights
+
+        self.t = 1
+        self.t = 1  # have our own time so we can load it from disk
+        self.replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.env, self.config)  # have our own replay buffer so that we can load it in from disk
+        self.num_episodes = 0
+        self.total_reward_so_far = 0
+
 
 
     def sample_action(self, env, state, epsilon, time, network_name):
@@ -168,7 +180,39 @@ class Linear(Q_Learning):
                 # We are just monitoring the number of win/loss (+1, -1) to monitor the Eval_reward
                 writer.add_scalar("Evaluation/Avg_Eval_Reward", total_reward/self.config.num_episodes_test, timestep)
 
+    def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
+        snapshot = {
+            "timestep" : self.t,
+            "num_episodes" : num_episodes,
+            "total_reward_so_far" : total_reward_so_far,
+            "replay_buffer_list" : replay_buffer.replay_buffer,
+            "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
+            "replay_buffer_num_elements" : replay_buffer.num_elements,
+            "approx_network_state_dict" : self.approx_network.state_dict(),
+            "target_network_state_dict" : self.target_network.state_dict()
+        }
 
+        torch.save(snapshot, "snapshot.pt")
+
+
+    def load_snapshot(self):
+
+        if not os.path.exists("snapshot.pt"):
+            print("Attempted to load snapshot which does not exist - skipping")
+            return
+
+        snapshot = torch.load("snapshot.pt", map_location='cpu', weights_only=False)
+
+        self.t = snapshot["timestep"]
+        self.num_episodes = snapshot["num_episodes"]
+        self.total_reward_so_far = snapshot["total_reward_so_far"]
+
+        self.replay_buffer.replay_buffer = snapshot["replay_buffer_list"]
+        self.replay_buffer.next_replay_location = snapshot["replay_buffer_next_replay_location"]
+        self.replay_buffer.num_elements = snapshot["replay_buffer_num_elements"]
+
+        self.approx_network.load_state_dict(snapshot["approx_network_state_dict"])
+        self.target_network.load_state_dict(snapshot["target_network_state_dict"])
 
 
     def set_target_weights(self):
