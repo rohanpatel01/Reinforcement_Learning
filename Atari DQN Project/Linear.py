@@ -87,10 +87,10 @@ class Linear(Q_Learning):
     def train_on_minibatch(self, minibatch, timestep):
         states, actions, rewards, next_states, dones = minibatch
 
-        states = states.to(self.device)
+        states = states.to(self.device).to(torch.double)
         actions = actions.to(self.device)
         rewards = rewards.to(self.device)
-        next_states = next_states.to(self.device)
+        next_states = next_states.to(self.device).to(torch.double)
         dones = dones.to(self.device)
 
         q_vals = self.approx_network(states)

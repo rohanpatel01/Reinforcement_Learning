@@ -111,7 +111,7 @@ class Q_Learning:
                     # Move state and next state to GPU for forward pass but move back to cpu before storing in replay buffer so it doesn't hog GPU VRAM
                     # state = state.to('cpu')
                     # next_state = next_state.to('cpu')
-                    experience_tuple = (state.to('cpu'), action, reward, next_state.to('cpu'), terminated)
+                    experience_tuple = (state.to(torch.uint8).to('cpu'), action, reward, next_state.to(torch.uint8).to('cpu'), terminated)
                     self.replay_buffer.store(experience_tuple)
 
                     # vars still on gpu when they get placed into minibatch - maybe try moving them to the cpu and only moving to gpu when we train on minibatch
@@ -123,7 +123,7 @@ class Q_Learning:
 
                 # Measures Max_Q per timestep and evaluates agent when time comes
                 self.monitor_performance(state, reward, monitor_end_of_episode=False, timestep=self.t)    # used to have env as param
-                torch.cuda.empty_cache()
+                # torch.cuda.empty_cache()
                 self.total_reward_so_far += reward
                 total_reward_for_episode += reward
 
@@ -135,7 +135,7 @@ class Q_Learning:
                     # monitor avg reward per episode and max_reward per episode (at end of episode)
                     self.num_episodes += 1
                     self.monitor_performance(state, reward, monitor_end_of_episode=True, timestep=self.t, context = (self.total_reward_so_far, self.num_episodes, total_reward_for_episode))
-                    torch.cuda.empty_cache()
+                    # torch.cuda.empty_cache()
                     break
 
             end_time = time.time()

@@ -162,8 +162,8 @@ def main():
     # print("Pytorch version: ", torch.__version__)
     # print("Number of GPU: ", torch.cuda.device_count())
     # print("GPU Name: ", torch.cuda.get_device_name())
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = 'cpu'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = 'cpu'    # cpu is significantly slower than using gpu (17s vs 8s)
     print("device: ", device)
     # print('Using device:', device)
 

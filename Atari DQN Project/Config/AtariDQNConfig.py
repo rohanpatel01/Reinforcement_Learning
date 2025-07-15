@@ -32,7 +32,7 @@ class AtariDQNConfig:
         self.begin_epsilon = 1  # eps_begin
         self.end_epsilon = 0.1  # eps_end
         self.max_time_steps_update_epsilon = 1000000  # eps_nsteps
-        self.learning_start = 1300 # 50000
+        self.learning_start = 50000
 
 
 
