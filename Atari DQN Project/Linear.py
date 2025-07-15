@@ -140,6 +140,7 @@ class Linear(Q_Learning):
                 return
 
             # Note: episode has not terminated
+            state = state.to(self.device)
             q_action_vals = self.approx_network(state)
 
             writer.add_scalar("Evaluation/STDV", torch.std(q_action_vals), timestep)    # measure the standard deviation - it shouldn't be too small bc otherwise means all states have similar q values (not good)
@@ -159,7 +160,7 @@ class Linear(Q_Learning):
 
 
                 eval_env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4,
-                               repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
+                                    repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
                 eval_env = GrayscaleObservation(eval_env, keep_dim=False)
                 eval_env = ResizeObservation(eval_env, shape=(80, 80))
                 eval_env = FrameStackObservation(eval_env, stack_size=4)

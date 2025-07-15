@@ -19,6 +19,8 @@ have stuff to monitor:
 
 from ReplayBuffer import ReplayBuffer
 from Scheduler import EpsilonScheduler
+import time
+
 
 
 class Q_Learning:
@@ -93,6 +95,7 @@ class Q_Learning:
             state = state.to(self.device)
 
             total_reward_for_episode = 0
+            start_time = time.time()
 
             while True:
                 with torch.no_grad():
@@ -105,8 +108,13 @@ class Q_Learning:
                     next_state = torch.from_numpy(next_state)
                     next_state = self.process_state(next_state).to(self.device)
 
-                    experience_tuple = (state, action, reward, next_state, terminated)
+                    # Move state and next state to GPU for forward pass but move back to cpu before storing in replay buffer so it doesn't hog GPU VRAM
+                    # state = state.to('cpu')
+                    # next_state = next_state.to('cpu')
+                    experience_tuple = (state.to('cpu'), action, reward, next_state.to('cpu'), terminated)
                     self.replay_buffer.store(experience_tuple)
+
+                    # vars still on gpu when they get placed into minibatch - maybe try moving them to the cpu and only moving to gpu when we train on minibatch
 
                 state = next_state
 
@@ -115,6 +123,7 @@ class Q_Learning:
 
                 # Measures Max_Q per timestep and evaluates agent when time comes
                 self.monitor_performance(state, reward, monitor_end_of_episode=False, timestep=self.t)    # used to have env as param
+                torch.cuda.empty_cache()
                 self.total_reward_so_far += reward
                 total_reward_for_episode += reward
 
@@ -126,4 +135,9 @@ class Q_Learning:
                     # monitor avg reward per episode and max_reward per episode (at end of episode)
                     self.num_episodes += 1
                     self.monitor_performance(state, reward, monitor_end_of_episode=True, timestep=self.t, context = (self.total_reward_so_far, self.num_episodes, total_reward_for_episode))
+                    torch.cuda.empty_cache()
                     break
+
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Time for episode: {elapsed_time:.6f} seconds", " : Device: ", self.device)
