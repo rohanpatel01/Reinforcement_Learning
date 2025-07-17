@@ -63,7 +63,8 @@ class Q_Learning:
         pass
 
     def process_state(self, state):
-        state = state.double()
+        # state = state.double()
+        state = state.float()
         state /= self.config.high
         return state
 
@@ -85,9 +86,9 @@ class Q_Learning:
 
             print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
-            if (self.t - time_last_saved) >= self.config.saving_freq:
-                self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer) # just for development now we're not gonna save snapshots
-                time_last_saved = self.t
+            # if (self.t - time_last_saved) >= self.config.saving_freq:
+            #     self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer) # just for development now we're not gonna save snapshots
+            #     time_last_saved = self.t
 
             state, info = self.env.reset()
             state = torch.from_numpy(state)
@@ -100,6 +101,26 @@ class Q_Learning:
             while True:
                 with torch.no_grad():
 
+                    # visualize the input to the nn
+                    # if self.t % 100 == 0:
+                    #     import matplotlib.pyplot as plt
+                    #     obs = state.to('cpu')
+                    #     print("Obs shape:", obs.shape)
+                    #
+                    #     # Split the 4 stacked frames
+                    #     # They are stacked along the last axis: obs[..., 0], obs[..., 1], etc.
+                    #     frames = [obs[..., i] for i in range(obs.shape[-1])]
+                    #
+                    #     # Plot them
+                    #     fig, axs = plt.subplots(1, 4, figsize=(12, 3))
+                    #     for i in range(4):
+                    #         axs[i].imshow(obs[i], cmap='gray')
+                    #         axs[i].axis('off')
+                    #         axs[i].set_title(f'Frame {i}')
+                    #     plt.tight_layout()
+                    #     plt.show()
+                    #     print("Show")
+
                     # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
                     action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
 
@@ -111,7 +132,7 @@ class Q_Learning:
                     # Move state and next state to GPU for forward pass but move back to cpu before storing in replay buffer so it doesn't hog GPU VRAM
                     # state = state.to('cpu')
                     # next_state = next_state.to('cpu')
-                    experience_tuple = (state.to(torch.uint8).to('cpu'), action, reward, next_state.to(torch.uint8).to('cpu'), terminated)
+                    experience_tuple = (state.to('cpu'), action, reward, next_state.to('cpu'), terminated)
                     self.replay_buffer.store(experience_tuple)
 
                     # vars still on gpu when they get placed into minibatch - maybe try moving them to the cpu and only moving to gpu when we train on minibatch

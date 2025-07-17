@@ -7,6 +7,9 @@ from torch import optim
 from torch.cuda import device
 from torch.utils.tensorboard import SummaryWriter
 import time
+
+from typing_extensions import override
+
 from Q_Learning import Q_Learning
 from TestEnv import TestEnv
 from DummyEnv import DummyEnv
@@ -24,6 +27,7 @@ from gymnasium.wrappers import (
     GrayscaleObservation,
     ResizeObservation,
     FrameStackObservation, RecordVideo,
+    AtariPreprocessing
 )
 import os
 
@@ -87,10 +91,28 @@ class Linear(Q_Learning):
     def train_on_minibatch(self, minibatch, timestep):
         states, actions, rewards, next_states, dones = minibatch
 
-        states = states.to(self.device).to(torch.double)
+        # import matplotlib.pyplot as plt
+        # obs = states[0].to('cpu')
+        # print("Obs shape:", obs.shape)
+        #
+        # # Split the 4 stacked frames
+        # # They are stacked along the last axis: obs[..., 0], obs[..., 1], etc.
+        # frames = [obs[..., i] for i in range(obs.shape[-1])]
+        #
+        # # Plot them
+        # fig, axs = plt.subplots(1, 4, figsize=(12, 3))
+        # for i in range(4):
+        #     axs[i].imshow(obs[i], cmap='gray')
+        #     axs[i].axis('off')
+        #     axs[i].set_title(f'Frame {i}')
+        # plt.tight_layout()
+        # plt.show()
+        # print("Show")
+
+        states = states.to(self.device).to(torch.float32)
         actions = actions.to(self.device)
         rewards = rewards.to(self.device)
-        next_states = next_states.to(self.device).to(torch.double)
+        next_states = next_states.to(self.device).to(torch.float32)
         dones = dones.to(self.device)
 
         q_vals = self.approx_network(states)
@@ -117,9 +139,23 @@ class Linear(Q_Learning):
         writer.add_scalar("Reward/train", torch.mean(rewards), timestep)
         loss.backward()
 
+        # Monitor the model and check for vanishing gradients due to weights -> 0
+        writer.add_scalar("Model/Conv1_Weight_Gradients", self.approx_network.conv1.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv2_Weight_Gradients", self.approx_network.conv2.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv3_Weight_Gradients", self.approx_network.conv3.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/fc1_Weight_Gradients", self.approx_network.fc1.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/fc2_Weight_Gradients", self.approx_network.fc2.weight.grad.abs().mean(), timestep)
+
+        writer.add_scalar("Model/Conv1_bias_Gradients", self.approx_network.conv1.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv2_bias_Gradients", self.approx_network.conv2.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv3_bias_Gradients", self.approx_network.conv3.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/fc1_bias_Gradients", self.approx_network.fc1.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/fc2_bias_Gradients", self.approx_network.fc2.bias.grad.abs().mean(), timestep)
+
         # add gradient clipping again
         if self.config.grad_clip:
             torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
+            torch.nn.utils.clip_grad_norm_(self.target_network.parameters(), self.config.clip_val)  # added target network to clip grad norm
 
 
         self.approx_network.optimizer.step()
@@ -146,11 +182,13 @@ class Linear(Q_Learning):
             writer.add_scalar("Evaluation/STDV", torch.std(q_action_vals), timestep)    # measure the standard deviation - it shouldn't be too small bc otherwise means all states have similar q values (not good)
             writer.add_scalar("Evaluation/Max_Q", torch.max(q_action_vals), timestep)
 
+
             # Note: we only evaluate/record if it's not the end of an episode (above check handles assuring this)
             # This is necessary bc we want to check every timestep if we need to evaluate, otherwise we may miss it bc current episode hasn't terminated
             if timestep % self.config.eval_freq == 0:
                 # TODO: Use state to track the max_q when we do a forward pass
                 record_env = gym.make("ALE/Pong-v5", obs_type="rgb", render_mode="rgb_array", frameskip=4, repeat_action_probability=0)   # rgb_array needed for video recording
+                record_env = FrameStackObservation(record_env, stack_size=4)
                 record_env = RecordVideo(
                     record_env,
                     video_folder="pong",
@@ -159,10 +197,18 @@ class Linear(Q_Learning):
                 )
 
 
-                eval_env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4,
-                                    repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
-                eval_env = GrayscaleObservation(eval_env, keep_dim=False)
-                eval_env = ResizeObservation(eval_env, shape=(80, 80))
+                # eval_env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4,
+                #                     repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
+                # eval_env = GrayscaleObservation(eval_env, keep_dim=False)
+                # eval_env = ResizeObservation(eval_env, shape=(80, 80))
+                # eval_env = FrameStackObservation(eval_env, stack_size=4)
+                eval_env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
+                eval_env = AtariPreprocessing(
+                    eval_env,
+                    noop_max=0, frame_skip=4, terminal_on_life_loss=False,
+                    screen_size=80, grayscale_obs=True, grayscale_newaxis=False,    # If error pops up, make sure screen size for eval_env matches env (from DQN) or (from Linear)
+                    scale_obs=False
+                )
                 eval_env = FrameStackObservation(eval_env, stack_size=4)
 
                 total_reward = 0
@@ -257,7 +303,7 @@ class LinearNN(nn.Module):
         self.config = config
         self.fc1 = nn.Linear(np.prod(self.env.observation_space.shape), self.env.action_space.n)
 
-        self.double()       # converts model to double to match datatype of input with no serious performance problems
+        self.float()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
@@ -289,7 +335,7 @@ def summary(model, env, config):
 
     for state_index in range(len(env.states)):
 
-        state = torch.tensor(np.array(env.states[state_index]), dtype=torch.double)
+        state = torch.tensor(np.array(env.states[state_index]), dtype=torch.float32)
         state = model.process_state(state)
         state = state.to(device)
         for action in range(len(env.actions)):
@@ -576,6 +622,7 @@ if __name__ == '__main__':
     #
     # print("Best Params: ", study.best_params)
     # print("Optimization complete. Data saved to:", storage_url)
+
 
 
 

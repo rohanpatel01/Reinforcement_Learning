@@ -13,8 +13,8 @@ class AtariDQNConfig:
         self.clip_val = 10
         self.saving_freq = 250000
         self.log_freq = 50
-        self.eval_freq = 250000
-        self.record_freq = 250000   # Note: the way I coded it, for a recording to be made record_freq must equal eval_freq or at least be a common multiple. otherwise recording will not be made
+        self.eval_freq = 3000 # 250000
+        self.record_freq = 3000 # 250000   # Note: the way I coded it, for a recording to be made record_freq must equal eval_freq or at least be a common multiple. otherwise recording will not be made
         self.soft_epsilon = 0.05
 
         # nature paper hyper params
@@ -32,7 +32,7 @@ class AtariDQNConfig:
         self.begin_epsilon = 1  # eps_begin
         self.end_epsilon = 0.1  # eps_end
         self.max_time_steps_update_epsilon = 1000000  # eps_nsteps
-        self.learning_start = 50000
+        self.learning_start = 3000 # 50000
 
 
 
