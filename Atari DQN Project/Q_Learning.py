@@ -129,10 +129,8 @@ class Q_Learning:
                     next_state = torch.from_numpy(next_state)
                     next_state = self.process_state(next_state).to(self.device)
 
-                    # Move state and next state to GPU for forward pass but move back to cpu before storing in replay buffer so it doesn't hog GPU VRAM
-                    # state = state.to('cpu')
-                    # next_state = next_state.to('cpu')
-                    experience_tuple = (state.to('cpu'), action, reward, next_state.to('cpu'), terminated)
+                    # convert state and next_state to uint8 before placing in replay buffer
+                    experience_tuple = ((state*self.config.high).to(torch.uint8).to('cpu'), action, reward, (next_state*self.config.high).to(torch.uint8).to('cpu'), terminated)
                     self.replay_buffer.store(experience_tuple)
 
                     # vars still on gpu when they get placed into minibatch - maybe try moving them to the cpu and only moving to gpu when we train on minibatch

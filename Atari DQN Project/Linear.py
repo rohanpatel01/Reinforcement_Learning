@@ -109,6 +109,9 @@ class Linear(Q_Learning):
         # plt.show()
         # print("Show")
 
+        states = self.process_state(states)
+        next_states = self.process_state(next_states)
+
         states = states.to(self.device).to(torch.float32)
         actions = actions.to(self.device)
         rewards = rewards.to(self.device)
