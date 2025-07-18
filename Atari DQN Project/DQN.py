@@ -20,6 +20,7 @@ from ReplayBuffer import ReplayBuffer
 from datetime import datetime
 import os
 
+from Linear import ReducedActionSet
 
 # Note: You can access the environment underneath the first wrapper by using the gymnasium.Wrapper.env attribute.
 #       If you want to get to the environment underneath all of the layers of wrappers, you can use the gymnasium.Wrapper.unwrapped attribute
@@ -113,7 +114,7 @@ class NatureQN(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, dtype=torch.float32)
         self.bn_conv3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(in_features=2304, out_features=512, dtype=torch.float32)   # was 2304
+        self.fc1 = nn.Linear(in_features=3136, out_features=512, dtype=torch.float32)   # 2304 for (4, 80, 80)          3136 for (4, 84, 84)
         self.bn_fc1 = nn.BatchNorm1d(512)
 
         self.fc2    = nn.Linear(in_features=512, out_features=env.action_space.n, dtype=torch.float32)  # 512  25
@@ -121,7 +122,7 @@ class NatureQN(nn.Module):
 
         self.ReLU = nn.ReLU()
 
-        self.optimizer = optim.RMSprop(self.parameters(), lr=self.config.lr_begin)  # mnih2015human uses RMSprop
+        self.optimizer = optim.RMSprop(self.parameters(), lr=self.config.lr_begin, alpha=self.config.squared_gradient_momentum, eps=self.config.rms_eps)  # mnih2015human uses RMSprop
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
         # self.criterion = nn.MSELoss()       # we're doing regression to get Q values so MSE is ok to use    - also by using MSE we assume data was sampled from gaussian distribution
 
@@ -212,8 +213,8 @@ def main():
     for i in range(num_trials_test):
 
         # config = NatureLinearConfig()
-        # config = AtariLinearConfig()
-        config = AtariDQNConfig()
+        config = AtariLinearConfig()
+        # config = AtariDQNConfig()
         # print(gym.envs.registration.registry.keys())
         # frameskip=4 means that The ALE backend will repeat the last chosen action for 4 frames internally, and return only every 4th frame.
         # TODO: might be an issue if we want to record the game bc will be in lower framerate so might change this later
@@ -224,17 +225,18 @@ def main():
         # env = FrameStackObservation(env, stack_size=4)  # we will treat the stacked frames as the channels
 
         env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
+        env = ReducedActionSet(env, allowed_actions=[0, 2, 3])
         env = AtariPreprocessing(
             env,
-            noop_max=3, frame_skip=4, terminal_on_life_loss=False,  # use noop_max = 3 in training to improve generalization
-            screen_size=80, grayscale_obs=True, grayscale_newaxis=False,
+            noop_max=30, frame_skip=4, terminal_on_life_loss=False, # changed noop_max to 30 from 0
+            screen_size=84, grayscale_obs=True, grayscale_newaxis=False,
             scale_obs=False
         )
         env = FrameStackObservation(env, stack_size=4)
 
         # env = TestEnv((80,80,4))
-        model = DQN(env, config, device)
-        # model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
+        # model = DQN(env, config, device)
+        model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
         # model.load_snapshot() # just right now I don't want to load the snapshot
         start_time = time.time()
         model.train()

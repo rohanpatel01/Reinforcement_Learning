@@ -86,9 +86,9 @@ class Q_Learning:
 
             print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
-            # if (self.t - time_last_saved) >= self.config.saving_freq:
-            #     self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer) # just for development now we're not gonna save snapshots
-            #     time_last_saved = self.t
+            if (self.t - time_last_saved) >= self.config.saving_freq:
+                self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer) # just for development now we're not gonna save snapshots
+                time_last_saved = self.t
 
             state, info = self.env.reset()
             state = torch.from_numpy(state)

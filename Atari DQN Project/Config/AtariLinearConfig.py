@@ -6,14 +6,18 @@ class AtariLinearConfig:
 
         self.high = 255.
         self.learning_delay = 0 # TODO: remove this everywhere once done
+        self.gradient_momentum = 0  # momentum
+        self.squared_gradient_momentum = 0.9  # 0.95   # alpha (rho)
+        self.no_op_max_eval = 30
+        self.rms_eps = 0.01
 
         self.num_episodes_test = 5  # we will record this many videos during evaluation# 50   Note: just for development we will change some of these values
         self.grad_clip = True
         self.clip_val = 10
         self.saving_freq = 5000 # 10000 # 50000 # 250000 they use 250k but just to be safe imma change to 50k
         self.log_freq = 50
-        self.eval_freq = 12000 # 250000 # changing eval_freq just so that we can log performance more often in beginning of testing
-        self.record_freq = 12000 # 250000   # this is how often we will record an episode as a video
+        self.eval_freq = 6000 # 250000 # changing eval_freq just so that we can log performance more often in beginning of testing
+        self.record_freq = 6000 # 250000   # this is how often we will record an episode as a video
         self.soft_epsilon = 0.05
 
         # nature paper hyper params

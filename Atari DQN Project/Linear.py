@@ -35,6 +35,19 @@ writer = SummaryWriter()
 video_dir = "videos/"
 os.makedirs(video_dir, exist_ok=True)
 
+from gymnasium.spaces import Discrete
+
+
+class ReducedActionSet(gym.ActionWrapper):
+    def __init__(self, env, allowed_actions):
+        super().__init__(env)
+        self.allowed_actions = allowed_actions
+        self.action_space = Discrete(len(self.allowed_actions))
+
+    def action(self, action):
+        return self.allowed_actions[action]
+
+
 class Linear(Q_Learning):
 
     def __init__(self, env, config, device):
@@ -131,11 +144,11 @@ class Linear(Q_Learning):
             target = torch.where(
                 dones,
                 rewards,
-                rewards + self.config.gamma * next_q_values
+                rewards + (self.config.gamma * next_q_values)
             )
 
         self.approx_network.optimizer.zero_grad()       # moved reset optimizer to before we compute loss. was always before loss.backward() tho
-        self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
+        # self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
@@ -143,23 +156,21 @@ class Linear(Q_Learning):
         loss.backward()
 
         # Monitor the model and check for vanishing gradients due to weights -> 0
-        writer.add_scalar("Model/Conv1_Weight_Gradients", self.approx_network.conv1.weight.grad.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv2_Weight_Gradients", self.approx_network.conv2.weight.grad.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv3_Weight_Gradients", self.approx_network.conv3.weight.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/Conv1_Weight_Gradients", self.approx_network.conv1.weight.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/Conv2_Weight_Gradients", self.approx_network.conv2.weight.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/Conv3_Weight_Gradients", self.approx_network.conv3.weight.grad.abs().mean(), timestep)
         writer.add_scalar("Model/fc1_Weight_Gradients", self.approx_network.fc1.weight.grad.abs().mean(), timestep)
-        writer.add_scalar("Model/fc2_Weight_Gradients", self.approx_network.fc2.weight.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/fc2_Weight_Gradients", self.approx_network.fc2.weight.grad.abs().mean(), timestep)
 
-        writer.add_scalar("Model/Conv1_bias_Gradients", self.approx_network.conv1.bias.grad.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv2_bias_Gradients", self.approx_network.conv2.bias.grad.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv3_bias_Gradients", self.approx_network.conv3.bias.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/Conv1_bias_Gradients", self.approx_network.conv1.bias.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/Conv2_bias_Gradients", self.approx_network.conv2.bias.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/Conv3_bias_Gradients", self.approx_network.conv3.bias.grad.abs().mean(), timestep)
         writer.add_scalar("Model/fc1_bias_Gradients", self.approx_network.fc1.bias.grad.abs().mean(), timestep)
-        writer.add_scalar("Model/fc2_bias_Gradients", self.approx_network.fc2.bias.grad.abs().mean(), timestep)
+        # writer.add_scalar("Model/fc2_bias_Gradients", self.approx_network.fc2.bias.grad.abs().mean(), timestep)
 
         # add gradient clipping again
         if self.config.grad_clip:
             torch.nn.utils.clip_grad_norm_(self.approx_network.parameters(), self.config.clip_val)
-            torch.nn.utils.clip_grad_norm_(self.target_network.parameters(), self.config.clip_val)  # added target network to clip grad norm
-
 
         self.approx_network.optimizer.step()
         self.approx_network.scheduler.step()
@@ -191,6 +202,7 @@ class Linear(Q_Learning):
             if timestep % self.config.eval_freq == 0:
                 # TODO: Use state to track the max_q when we do a forward pass
                 record_env = gym.make("ALE/Pong-v5", obs_type="rgb", render_mode="rgb_array", frameskip=4, repeat_action_probability=0)   # rgb_array needed for video recording
+                record_env = ReducedActionSet(record_env, allowed_actions=[0, 2, 3])
                 record_env = FrameStackObservation(record_env, stack_size=4)
                 record_env = RecordVideo(
                     record_env,
@@ -206,10 +218,11 @@ class Linear(Q_Learning):
                 # eval_env = ResizeObservation(eval_env, shape=(80, 80))
                 # eval_env = FrameStackObservation(eval_env, stack_size=4)
                 eval_env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
+                eval_env = ReducedActionSet(eval_env, allowed_actions=[0, 2, 3])
                 eval_env = AtariPreprocessing(
                     eval_env,
-                    noop_max=0, frame_skip=4, terminal_on_life_loss=False,
-                    screen_size=80, grayscale_obs=True, grayscale_newaxis=False,    # If error pops up, make sure screen size for eval_env matches env (from DQN) or (from Linear)
+                    noop_max=self.config.no_op_max_eval, frame_skip=4, terminal_on_life_loss=False,         # use noop max of 30 during evaluation
+                    screen_size=84, grayscale_obs=True, grayscale_newaxis=False,    # If error pops up, make sure screen size for eval_env matches env (from DQN) or (from Linear)
                     scale_obs=False
                 )
                 eval_env = FrameStackObservation(eval_env, stack_size=4)
@@ -220,9 +233,10 @@ class Linear(Q_Learning):
 
                     # Note: Using same seed so that states and actions of Record env and eval_env match so that
                     # we see exactly the states the agent performs the actions in - but just that we record in color and not the preprocessed version we pass to the NN
-                    record_env.reset(seed=42)
+                    rand_seed = np.random.randint(100)
+                    record_env.reset(seed=rand_seed)
 
-                    state, info = eval_env.reset(seed=42)
+                    state, info = eval_env.reset(seed=rand_seed)
                     state = torch.from_numpy(state)
                     state = self.process_state(state)
                     state = state.to(self.device)
