@@ -6,7 +6,7 @@ def get_initial_state():
     return 0
 
 class TestEnv:
-    def __init__(self, shape=(5,5,1)):
+    def __init__(self, shape=(1, 5,5)):
 
         self.numStates = 4
         self.numActions = 5
@@ -35,7 +35,7 @@ class TestEnv:
         self.current_time = 0
         self.__done = False
 
-    def take_action(self, action):
+    def step(self, action):
 
         assert(self.__done == False)
         assert(0 <= action <= len(self.actions))
@@ -55,7 +55,7 @@ class TestEnv:
         #     self.done = True
         self.__state_index = next_state_index
 
-        return torch.tensor(np.array(self.states[next_state_index]), dtype=torch.double), reward, (self.current_time >= self.MAX_TIME_STEPS)
+        return torch.tensor(np.array(self.states[next_state_index]), dtype=torch.double), reward, (self.current_time >= self.MAX_TIME_STEPS), None, None
 
 
 
@@ -65,7 +65,7 @@ class TestEnv:
         self.current_time = 0
         self.__done = False
 
-        return torch.tensor(np.array(self.states[self.__state_index]), dtype=torch.double)
+        return torch.tensor(np.array(self.states[self.__state_index]), dtype=torch.double), None
 
 
 def environmentTest():

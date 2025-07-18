@@ -5,9 +5,20 @@ class NatureLinearConfig:
     def __init__(self, **kwargs):
         self.high                            = 255.
 
+        # TODO: New
+        self.gradient_momentum = 0  # momentum
+        self.squared_gradient_momentum = 0.9  # 0.95   # alpha (rho)
+        self.no_op_max_eval = 30
+        self.rms_eps = 0.01
+
         self.learning_delay                  = 0
 
-        self.nsteps_train                    = 8000
+        self.nsteps_train                   = 8000
+
+        # TODO: New
+        self.eval_freq                      = 9000 # purposefully made higher so we wont
+        self.num_episodes_test              = 20
+        self.soft_epsilon                   = 0.0
 
         self.learning_start                  = 200
         self.learning_freq                   = 4

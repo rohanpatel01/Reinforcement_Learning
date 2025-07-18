@@ -71,7 +71,7 @@ class Linear(Q_Learning):
 
         if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
             # take random action
-            return np.random.randint(env.action_space.n)  # numActions
+            return np.random.randint(env.numActions)  # numActions        action_space.n
         else:
             # select greedy action
             return self.get_best_action(state, network_name)
@@ -122,8 +122,8 @@ class Linear(Q_Learning):
         # plt.show()
         # print("Show")
 
-        states = self.process_state(states)
-        next_states = self.process_state(next_states)
+        # states = self.process_state(states)
+        # next_states = self.process_state(next_states)
 
         states = states.to(self.device).to(torch.float32)
         actions = actions.to(self.device)
@@ -144,11 +144,11 @@ class Linear(Q_Learning):
             target = torch.where(
                 dones,
                 rewards,
-                rewards + (self.config.gamma * next_q_values)
+                rewards + self.config.gamma * next_q_values # TODO: new - removed parenthesis
             )
 
         self.approx_network.optimizer.zero_grad()       # moved reset optimizer to before we compute loss. was always before loss.backward() tho
-        # self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
+        self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
@@ -156,17 +156,17 @@ class Linear(Q_Learning):
         loss.backward()
 
         # Monitor the model and check for vanishing gradients due to weights -> 0
-        # writer.add_scalar("Model/Conv1_Weight_Gradients", self.approx_network.conv1.weight.grad.abs().mean(), timestep)
-        # writer.add_scalar("Model/Conv2_Weight_Gradients", self.approx_network.conv2.weight.grad.abs().mean(), timestep)
-        # writer.add_scalar("Model/Conv3_Weight_Gradients", self.approx_network.conv3.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv1_Weight_Gradients", self.approx_network.conv1.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv2_Weight_Gradients", self.approx_network.conv2.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv3_Weight_Gradients", self.approx_network.conv3.weight.grad.abs().mean(), timestep)
         writer.add_scalar("Model/fc1_Weight_Gradients", self.approx_network.fc1.weight.grad.abs().mean(), timestep)
-        # writer.add_scalar("Model/fc2_Weight_Gradients", self.approx_network.fc2.weight.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/fc2_Weight_Gradients", self.approx_network.fc2.weight.grad.abs().mean(), timestep)
 
-        # writer.add_scalar("Model/Conv1_bias_Gradients", self.approx_network.conv1.bias.grad.abs().mean(), timestep)
-        # writer.add_scalar("Model/Conv2_bias_Gradients", self.approx_network.conv2.bias.grad.abs().mean(), timestep)
-        # writer.add_scalar("Model/Conv3_bias_Gradients", self.approx_network.conv3.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv1_bias_Gradients", self.approx_network.conv1.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv2_bias_Gradients", self.approx_network.conv2.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/Conv3_bias_Gradients", self.approx_network.conv3.bias.grad.abs().mean(), timestep)
         writer.add_scalar("Model/fc1_bias_Gradients", self.approx_network.fc1.bias.grad.abs().mean(), timestep)
-        # writer.add_scalar("Model/fc2_bias_Gradients", self.approx_network.fc2.bias.grad.abs().mean(), timestep)
+        writer.add_scalar("Model/fc2_bias_Gradients", self.approx_network.fc2.bias.grad.abs().mean(), timestep)
 
         # add gradient clipping again
         if self.config.grad_clip:
@@ -199,71 +199,66 @@ class Linear(Q_Learning):
 
             # Note: we only evaluate/record if it's not the end of an episode (above check handles assuring this)
             # This is necessary bc we want to check every timestep if we need to evaluate, otherwise we may miss it bc current episode hasn't terminated
-            if timestep % self.config.eval_freq == 0:
+            # if timestep % self.config.eval_freq == 0:
                 # TODO: Use state to track the max_q when we do a forward pass
-                record_env = gym.make("ALE/Pong-v5", obs_type="rgb", render_mode="rgb_array", frameskip=4, repeat_action_probability=0)   # rgb_array needed for video recording
-                record_env = ReducedActionSet(record_env, allowed_actions=[0, 2, 3])
-                record_env = FrameStackObservation(record_env, stack_size=4)
-                record_env = RecordVideo(
-                    record_env,
-                    video_folder="pong",
-                    name_prefix="eval",
-                    episode_trigger=lambda x: (x==0) and ((timestep % self.config.record_freq) == 0)      # internally, the env has a counter and it consults episode_trigger's boolean value of whether it should record that episode or not
-                )
-
-
-                # eval_env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4,
-                #                     repeat_action_probability=0)  # repeat action prob can help show robustness - maybe try this after we train it
-                # eval_env = GrayscaleObservation(eval_env, keep_dim=False)
-                # eval_env = ResizeObservation(eval_env, shape=(80, 80))
+                # record_env = gym.make("ALE/Pong-v5", obs_type="rgb", render_mode="rgb_array", frameskip=4, repeat_action_probability=0)   # rgb_array needed for video recording
+                # record_env = ReducedActionSet(record_env, allowed_actions=[0, 2, 3])
+                # record_env = FrameStackObservation(record_env, stack_size=4)
+                # record_env = RecordVideo(
+                #     record_env,
+                #     video_folder="pong",
+                #     name_prefix="eval",
+                #     episode_trigger=lambda x: (x==0) and ((timestep % self.config.record_freq) == 0)      # internally, the env has a counter and it consults episode_trigger's boolean value of whether it should record that episode or not
+                # )
+                #
+                # eval_env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
+                # eval_env = ReducedActionSet(eval_env, allowed_actions=[0, 2, 3])
+                # eval_env = AtariPreprocessing(
+                #     eval_env,
+                #     noop_max=self.config.no_op_max_eval, frame_skip=4, terminal_on_life_loss=False,         # use noop max of 30 during evaluation
+                #     screen_size=84, grayscale_obs=True, grayscale_newaxis=False,    # If error pops up, make sure screen size for eval_env matches env (from DQN) or (from Linear)
+                #     scale_obs=False
+                # )
                 # eval_env = FrameStackObservation(eval_env, stack_size=4)
-                eval_env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
-                eval_env = ReducedActionSet(eval_env, allowed_actions=[0, 2, 3])
-                eval_env = AtariPreprocessing(
-                    eval_env,
-                    noop_max=self.config.no_op_max_eval, frame_skip=4, terminal_on_life_loss=False,         # use noop max of 30 during evaluation
-                    screen_size=84, grayscale_obs=True, grayscale_newaxis=False,    # If error pops up, make sure screen size for eval_env matches env (from DQN) or (from Linear)
-                    scale_obs=False
-                )
-                eval_env = FrameStackObservation(eval_env, stack_size=4)
 
-                total_reward = 0
-
-                for episode in range(self.config.num_episodes_test):
+                # eval_env = TestEnv((4, 84, 84))
+                # total_reward = 0
+                #
+                # for episode in range(self.config.num_episodes_test):
 
                     # Note: Using same seed so that states and actions of Record env and eval_env match so that
                     # we see exactly the states the agent performs the actions in - but just that we record in color and not the preprocessed version we pass to the NN
-                    rand_seed = np.random.randint(100)
-                    record_env.reset(seed=rand_seed)
+                    # rand_seed = np.random.randint(100)
+                    # record_env.reset(seed=rand_seed)  # TODO bring back
 
-                    state, info = eval_env.reset(seed=rand_seed)
-                    state = torch.from_numpy(state)
-                    state = self.process_state(state)
-                    state = state.to(self.device)
-
-                    while True:
-                        with torch.no_grad():
-
-                            action = self.sample_action(eval_env, state,
-                                                        self.config.soft_epsilon,
-                                                        self.t, "approx")
-
-                            # next_state, reward, done = self.env.take_action(action)
-                            next_state, reward, terminated, truncated, info = eval_env.step(action)
-                            record_env.step(action) # no need to track values returned from function
-
-                            next_state = torch.from_numpy(next_state)
-                            next_state = self.process_state(next_state).to(self.device)
-                            state = next_state
-
-                            total_reward += reward
-                            if terminated:
-                                break
-
-                # Done with episodes
-                # We are just monitoring the number of win/loss (+1, -1) to monitor the Eval_reward
-                writer.add_scalar("Evaluation/Avg_Eval_Reward", total_reward/self.config.num_episodes_test, timestep)
-                record_env.close()  # close to flush video to file
+                #     state, info = eval_env.reset()  # seed=rand_seed
+                #     # state = torch.from_numpy(state)
+                #     state = self.process_state(state)
+                #     state = state.to(self.device)
+                #
+                #     while True:
+                #         with torch.no_grad():
+                #
+                #             action = self.sample_action(eval_env, state,
+                #                                         self.config.soft_epsilon,
+                #                                         self.t, "approx")
+                #
+                #             # next_state, reward, done = self.env.take_action(action)
+                #             next_state, reward, terminated, truncated, info = eval_env.step(action)
+                #             # record_env.step(action) # TODO bring back
+                #
+                #             # next_state = torch.from_numpy(next_state)
+                #             next_state = self.process_state(next_state).to(self.device)
+                #             state = next_state
+                #
+                #             total_reward += reward
+                #             if terminated:
+                #                 break
+                #
+                # # Done with episodes
+                # # We are just monitoring the number of win/loss (+1, -1) to monitor the Eval_reward
+                # writer.add_scalar("Evaluation/Avg_Eval_Reward", total_reward/self.config.num_episodes_test, timestep)
+                # record_env.close()  # close to flush video to file   # TODO: Bring back
 
     def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
         snapshot = {
@@ -318,7 +313,7 @@ class LinearNN(nn.Module):
         super(LinearNN, self).__init__()
         self.env = env
         self.config = config
-        self.fc1 = nn.Linear(np.prod(self.env.observation_space.shape), self.env.action_space.n)
+        self.fc1 = nn.Linear(np.prod(self.env.state_shape), self.env.numActions)            # observation_space.shape    action_space.n               self.env.state_shape   self.env.numActions
 
         self.float()       # converts model to double to match datatype of input with no serious performance problems
         self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr_begin)
@@ -363,7 +358,7 @@ def summary(model, env, config):
     print("Best trajectory: ")
 
     # Get best trajectory from state 0
-    state = env.reset()
+    state, _ = env.reset()
     state = model.process_state(state)
     state = state.to(device)
 
@@ -377,7 +372,7 @@ def summary(model, env, config):
         states_visited.append(torch.mean(state))
         actions_taken.append(best_action)
 
-        next_state, reward, done = env.take_action(best_action)
+        next_state, reward, done, _, _ = env.step(best_action)
         next_state = model.process_state(next_state).to(device)
 
         rewards_received.append(reward)

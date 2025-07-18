@@ -84,14 +84,14 @@ class Q_Learning:
 
         while self.t <= self.config.nsteps_train:
 
-            print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
+            # print("Time: ", self.t, " Epsilon: ", epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), " Learning Rate: ", self.approx_network.optimizer.param_groups[0]['lr'])
 
-            if (self.t - time_last_saved) >= self.config.saving_freq:
-                self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer) # just for development now we're not gonna save snapshots
-                time_last_saved = self.t
+            # if (self.t - time_last_saved) >= self.config.saving_freq:
+            #     self.save_snapshop(self.t, self.num_episodes, self.total_reward_so_far, self.replay_buffer) # just for development now we're not gonna save snapshots
+            #     time_last_saved = self.t
 
             state, info = self.env.reset()
-            state = torch.from_numpy(state)
+            # state = torch.from_numpy(state)
             state = self.process_state(state)
             state = state.to(self.device)
 
@@ -126,11 +126,12 @@ class Q_Learning:
 
                     # next_state, reward, done = self.env.take_action(action)
                     next_state, reward, terminated, truncated, info = self.env.step(action)
-                    next_state = torch.from_numpy(next_state)
+                    # next_state = torch.from_numpy(next_state)
                     next_state = self.process_state(next_state).to(self.device)
 
                     # convert state and next_state to uint8 before placing in replay buffer
-                    experience_tuple = ((state*self.config.high).to(torch.uint8).to('cpu'), action, reward, (next_state*self.config.high).to(torch.uint8).to('cpu'), terminated)
+                    # experience_tuple = ((state*self.config.high).to(torch.uint8).to('cpu'), action, reward, (next_state*self.config.high).to(torch.uint8).to('cpu'), terminated)
+                    experience_tuple = (state.to('cpu'), action, reward, next_state.to('cpu'), terminated)
                     self.replay_buffer.store(experience_tuple)
 
                     # vars still on gpu when they get placed into minibatch - maybe try moving them to the cpu and only moving to gpu when we train on minibatch
@@ -159,4 +160,4 @@ class Q_Learning:
 
             end_time = time.time()
             elapsed_time = end_time - start_time
-            print(f"Time for episode: {elapsed_time:.6f} seconds", " : Device: ", self.device)
+            # print(f"Time for episode: {elapsed_time:.6f} seconds", " : Device: ", self.device)
