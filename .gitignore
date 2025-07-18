@@ -5,3 +5,5 @@ Resources/*
 .idea/*
 Atari DQN Project/runs/*
 Console_Output
+Atari DQN Project/.DS_Store
+.DS_Store
