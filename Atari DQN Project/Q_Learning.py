@@ -101,7 +101,6 @@ class Q_Learning:
             while True:
                 with torch.no_grad():
 
-                    # TODO: Note: when we sample action - in the get_best_action function we can also monitor the highest Q values - can help us see if we're training right
                     action = self.sample_action(self.env, state, epsilon_scheduler.get_epsilon(self.t - self.config.learning_delay), self.t, "approx")
 
                     next_state, reward, terminated, truncated, info = self.env.step(action)

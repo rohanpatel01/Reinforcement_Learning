@@ -98,15 +98,13 @@ class NatureQN(nn.Module):
 
     # Following Model Architecture from mnih2015human
     def __init__(self, env, config, device):
-        # torch.manual_seed(42)             # for testing purposes
         super(NatureQN, self).__init__()
         self.env = env
         self.config = config
         self.device = device
 
-        # Note default data type for nn.Conv2d weights and biases are float so we change to float32 to match state datatype
-        self.conv1 = nn.Conv2d(in_channels=env.observation_space.shape[0], out_channels=32, kernel_size=8, stride=4, dtype=torch.float32)  #   state_shape[0]     observation_space.shape[0]
-        self.bn_conv1 = nn.BatchNorm2d(32)  # we're normalizing the input to the next layer so match next layer's num in_channels
+        self.conv1 = nn.Conv2d(in_channels=env.observation_space.shape[0], out_channels=32, kernel_size=8, stride=4, dtype=torch.float32)
+        self.bn_conv1 = nn.BatchNorm2d(32)
 
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, dtype=torch.float32)
         self.bn_conv2 = nn.BatchNorm2d(64)
@@ -114,18 +112,15 @@ class NatureQN(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, dtype=torch.float32)
         self.bn_conv3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(in_features=3136, out_features=512, dtype=torch.float32)   # 2304 for (4, 80, 80)          3136 for (4, 84, 84)       4 for Cartpole
+        self.fc1 = nn.Linear(in_features=3136, out_features=512, dtype=torch.float32)
         self.bn_fc1 = nn.BatchNorm1d(512)
 
-        self.fc2    = nn.Linear(in_features=512, out_features=env.action_space.n, dtype=torch.float32)  # 512  25             # action_space.n      numActions
-
+        self.fc2    = nn.Linear(in_features=512, out_features=env.action_space.n, dtype=torch.float32)
 
         self.ReLU = nn.ReLU()
 
         self.optimizer = optim.RMSprop(self.parameters(), lr=self.config.lr_begin, alpha=self.config.squared_gradient_momentum, eps=self.config.rms_eps)  # , alpha=self.config.squared_gradient_momentum, eps=self.config.rms_eps
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
-        # self.criterion = nn.MSELoss()
-
         self.criterion = nn.SmoothL1Loss()
 
 

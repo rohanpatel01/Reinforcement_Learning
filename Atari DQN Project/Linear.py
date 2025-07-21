@@ -126,11 +126,11 @@ class Linear(Q_Learning):
             target = torch.where(
                 dones,
                 rewards,
-                rewards + self.config.gamma * next_q_values # TODO: new - removed parenthesis
+                rewards + self.config.gamma * next_q_values
             )
 
-        self.approx_network.optimizer.zero_grad()       # moved reset optimizer to before we compute loss. was always before loss.backward() tho
-        self.target_network.optimizer.zero_grad()       # idk if this'll do anything bc we shouldn't need to do anything with target network gradients
+        self.approx_network.optimizer.zero_grad()
+        self.target_network.optimizer.zero_grad()
 
         loss = self.approx_network.criterion(q_chosen, target)
         writer.add_scalar("Loss/train", loss.item(), timestep)
