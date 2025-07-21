@@ -151,17 +151,11 @@ class Linear(Q_Learning):
         writer.add_scalar("Model/fc2_bias_Gradients", self.approx_network.fc2.bias.grad.abs().mean(), timestep)
 
         # Target network weights
-        writer.add_scalar("Model/Conv1_Weight_Gradients", self.target_network.conv1.weight.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv2_Weight_Gradients", self.target_network.conv2.weight.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv3_Weight_Gradients", self.target_network.conv3.weight.abs().mean(), timestep)
-        writer.add_scalar("Model/fc1_Weight_Gradients", self.target_network.fc1.weight.abs().mean(), timestep)
-        writer.add_scalar("Model/fc2_Weight_Gradients", self.target_network.fc2.weight.abs().mean(), timestep)
-
-        writer.add_scalar("Model/Conv1_bias_Gradients", self.target_network.conv1.bias.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv2_bias_Gradients", self.target_network.conv2.bias.abs().mean(), timestep)
-        writer.add_scalar("Model/Conv3_bias_Gradients", self.target_network.conv3.bias.abs().mean(), timestep)
-        writer.add_scalar("Model/fc1_bias_Gradients", self.target_network.fc1.bias.abs().mean(), timestep)
-        writer.add_scalar("Model/fc2_bias_Gradients", self.target_network.fc2.bias.abs().mean(), timestep)
+        writer.add_scalar("Model/Weights/Conv1_Weights", self.target_network.conv1.weight.abs().mean(), timestep)
+        writer.add_scalar("Model/Weights/Conv2_Weights", self.target_network.conv2.weight.abs().mean(), timestep)
+        writer.add_scalar("Model/Weights/Conv3_Weights", self.target_network.conv3.weight.abs().mean(), timestep)
+        writer.add_scalar("Model/Weights/fc1_Weights", self.target_network.fc1.weight.abs().mean(), timestep)
+        writer.add_scalar("Model/Weights/fc2_Weights", self.target_network.fc2.weight.abs().mean(), timestep)
 
         # add gradient clipping again
         if self.config.grad_clip:
