@@ -105,7 +105,7 @@ class NatureQN(nn.Module):
         self.device = device
 
         # Note default data type for nn.Conv2d weights and biases are float so we change to float32 to match state datatype
-        self.conv1 = nn.Conv2d(in_channels=env.state_shape[0], out_channels=32, kernel_size=8, stride=4, dtype=torch.float32)  #   state_shape[0]     observation_space.shape[0]
+        self.conv1 = nn.Conv2d(in_channels=env.observation_space.shape[0], out_channels=32, kernel_size=8, stride=4, dtype=torch.float32)  #   state_shape[0]     observation_space.shape[0]
         self.bn_conv1 = nn.BatchNorm2d(32)  # we're normalizing the input to the next layer so match next layer's num in_channels
 
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, dtype=torch.float32)
@@ -114,40 +114,22 @@ class NatureQN(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, dtype=torch.float32)
         self.bn_conv3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(in_features=2304, out_features=512, dtype=torch.float32)   # 2304 for (4, 80, 80)          3136 for (4, 84, 84)
+        self.fc1 = nn.Linear(in_features=3136, out_features=512, dtype=torch.float32)   # 2304 for (4, 80, 80)          3136 for (4, 84, 84)       4 for Cartpole
         self.bn_fc1 = nn.BatchNorm1d(512)
 
-        self.fc2    = nn.Linear(in_features=512, out_features=env.numActions, dtype=torch.float32)  # 512  25             # action_space.n      numActions
+        self.fc2    = nn.Linear(in_features=512, out_features=env.action_space.n, dtype=torch.float32)  # 512  25             # action_space.n      numActions
 
 
         self.ReLU = nn.ReLU()
 
-        self.optimizer = optim.RMSprop(self.parameters(), lr=self.config.lr_begin)  # , alpha=self.config.squared_gradient_momentum, eps=self.config.rms_eps
+        self.optimizer = optim.RMSprop(self.parameters(), lr=self.config.lr_begin, alpha=self.config.squared_gradient_momentum, eps=self.config.rms_eps)  # , alpha=self.config.squared_gradient_momentum, eps=self.config.rms_eps
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.linear_decay)
-        self.criterion = nn.MSELoss()       # we're doing regression to get Q values so MSE is ok to use    - also by using MSE we assume data was sampled from gaussian distribution
+        # self.criterion = nn.MSELoss()
 
-        # It is less sensitive to outliers than :class:`torch.nn.MSELoss` and in some cases prevents exploding gradients
-        # help with vanishing gradients when using nn.Conv2d Layers
-        # self.criterion = nn.SmoothL1Loss()
+        self.criterion = nn.SmoothL1Loss()
 
 
     def forward(self, x):
-
-        # permute from NHWC into NCHW format for nn.Conv2d based on batch or single input
-
-        x = self.conv1(x)
-        x = self.ReLU(x)
-        x = self.conv2(x)
-        x = self.ReLU(x)
-        x = self.conv3(x)
-        x = self.ReLU(x)
-
-
-        # For Atari environment no need to permute bc already in format NCHW
-        # if len(x.shape) == 3:   # single input [height, width, num_channels]
-        #     x = x.permute(2, 0, 1)
-        # elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
-        #     x = x.permute(0, 3, 1, 2)
 
         # if len(x.shape) == 4:
         #     x = self.bn_conv1(self.conv1(x))
@@ -171,11 +153,11 @@ class NatureQN(nn.Module):
         #
         # x = self.ReLU(x)
         #
-        # un-permute before we flatten
-        if len(x.shape) == 3:   # single input [height, width, num_channels]
-            x = torch.flatten(x)
-        elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
-            x = torch.flatten(x, start_dim=1)
+        # # un-permute before we flatten
+        # if len(x.shape) == 3:   # single input [height, width, num_channels]
+        #     x = torch.flatten(x)
+        # elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
+        #     x = torch.flatten(x, start_dim=1)
         #
         # if len(x.shape) == 2:
         #     x = self.bn_fc1(self.fc1(x))
@@ -186,6 +168,20 @@ class NatureQN(nn.Module):
         # x = self.ReLU(x)
         # x = self.fc2(x)
 
+        x = self.conv1(x)
+        x = self.ReLU(x)
+
+        x = self.conv2(x)
+        x = self.ReLU(x)
+
+        x = self.conv3(x)
+        x = self.ReLU(x)
+
+        if len(x.shape) == 3:  # single input [height, width, num_channels]
+            x = torch.flatten(x)
+        elif len(x.shape) == 4:  # batch input [batch_size, height, width, num_channels]
+            x = torch.flatten(x, start_dim=1)
+
         x = self.fc1(x)
         x = self.ReLU(x)
         x = self.fc2(x)
@@ -195,79 +191,54 @@ class NatureQN(nn.Module):
 # def objective(trial):
 def main():
 
-    # config = NatureLinearConfig(
-    #     nsteps_train = trial.suggest_categorical("nsteps_train", [3000, 4000, 5000, 6000, 7000, 8000]),
-    #     target_weight_update_freq = trial.suggest_categorical("target_weight_update_freq", [100, 150, 200, 500]),
-    #     replay_buffer_size = trial.suggest_categorical("replay_buffer_size", [500, 1000]),
-    #     epsilon_decay_percentage = trial.suggest_categorical("epsilon_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
-    #     lr_begin = trial.suggest_categorical("lr_begin", [0.00025]),
-    #     lr_decay_percentage = trial.suggest_categorical("lr_decay_percentage", [0.4, 0.5, 0.7, 0.9]),
-    # )
 
-    # How to connect to GPU
-    # print("Pytorch version: ", torch.__version__)
-    # print("Number of GPU: ", torch.cuda.device_count())
-    # print("GPU Name: ", torch.cuda.get_device_name())
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # device = 'cpu'    # cpu is significantly slower than using gpu (17s vs 8s)
-    # print("device: ", device)
-    # print("MPS available:", torch.backends.mps.is_available())
-    # print("MPS built:", torch.backends.mps.is_built())
-    # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     print('Using device:', device)
 
 
-    MAX_REWARD = 4.1
-    count_max_reward = 0
-    num_trials_test = 20
+    # MAX_REWARD = 4.1
+    # count_max_reward = 0
+    num_trials_test = 1
 
 
     for i in range(num_trials_test):
         print("starting trial: ", i+1)
 
-        config = NatureLinearConfig()
+        # config = NatureLinearConfig()
         # config = AtariLinearConfig()
-        # config = AtariDQNConfig()
+        config = AtariDQNConfig()
         # print(gym.envs.registration.registry.keys())
-        # frameskip=4 means that The ALE backend will repeat the last chosen action for 4 frames internally, and return only every 4th frame.
-        # TODO: might be an issue if we want to record the game bc will be in lower framerate so might change this later
+        env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
+        env = ReducedActionSet(env, allowed_actions=[0, 2, 3])
+        env = AtariPreprocessing(
+            env,
+            noop_max=30, frame_skip=4, terminal_on_life_loss=False, # changed noop_max to 30 from 0
+            screen_size=84, grayscale_obs=True, grayscale_newaxis=False,
+            scale_obs=False
+        )
+        env = FrameStackObservation(env, stack_size=4)
 
-        # env = gym.make("ALE/Pong-v5", obs_type="rgb", frameskip=4, repeat_action_probability=0) # repeat action prob can help show robustness - maybe try this after we train it
-        # env = GrayscaleObservation(env, keep_dim=False)
-        # env = ResizeObservation(env, shape=(80, 80))
-        # env = FrameStackObservation(env, stack_size=4)  # we will treat the stacked frames as the channels
-
-        # env = gym.make("ALE/Pong-v5", frameskip=1, repeat_action_probability=0)
-        # env = ReducedActionSet(env, allowed_actions=[0, 2, 3])
-        # env = AtariPreprocessing(
-        #     env,
-        #     noop_max=30, frame_skip=4, terminal_on_life_loss=False, # changed noop_max to 30 from 0
-        #     screen_size=84, grayscale_obs=True, grayscale_newaxis=False,
-        #     scale_obs=False
-        # )
-        # env = FrameStackObservation(env, stack_size=4)
-
-        env = TestEnv((4, 80, 80))
         model = DQN(env, config, device)
         # model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
         # model.load_snapshot() # just right now I don't want to load the snapshot
-        start_time = time.time()
+        # start_time = time.time()
         model.train()
-        end_time = time.time()
+        # end_time = time.time()
 
         writer.flush()
         writer.close()
 
-        total_reward = summary(model, env, config)
-        if total_reward == MAX_REWARD:
-            count_max_reward += 1
+        # total_reward = summary(model, env, config)
+        # if total_reward == MAX_REWARD:
+        #     count_max_reward += 1
 
 
-        elapsed_time = end_time - start_time
+        # elapsed_time = end_time - start_time
 
         # print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
-    print("Training stability: ", count_max_reward / num_trials_test)
+    # print("Training stability: ", count_max_reward / num_trials_test)
 
 
 
