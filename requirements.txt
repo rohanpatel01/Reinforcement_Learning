@@ -11,3 +11,4 @@ gymnasium[atari, accept-rom-license]
 ale-py
 autorom
 gymnasium[other]                            # Imports open-cv which is necessary for Atari ALE/Pong-v5
+huggingface_hub

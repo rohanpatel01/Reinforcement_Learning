@@ -21,6 +21,9 @@ import optuna
 from optuna_dashboard import run_server
 import time
 
+from huggingface_hub import HfApi
+
+
 import gymnasium as gym
 
 from gymnasium.wrappers import (
@@ -251,15 +254,30 @@ class Linear(Q_Learning):
     def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
         snapshot = {
             "timestep" : self.t,
-            "num_episodes" : num_episodes,
-            "total_reward_so_far" : total_reward_so_far,
-            "replay_buffer_list" : replay_buffer.replay_buffer,
-            "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
-            "replay_buffer_num_elements" : replay_buffer.num_elements,
+            # "num_episodes" : num_episodes,
+            # "total_reward_so_far" : total_reward_so_far,
+            # "replay_buffer_list" : replay_buffer.replay_buffer,
+            # "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
+            # "replay_buffer_num_elements" : replay_buffer.num_elements,
             "approx_network_state_dict" : self.approx_network.state_dict(),
             "target_network_state_dict" : self.target_network.state_dict()
         }
 
+        # upload to hugging face repo
+        try:
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj="/snapshot.pt",
+                path_in_repo="snapshot.pt",
+                repo_id="rohanpatel01/Atari_DQN",
+                repo_type="model",  # model bc we're saving .pt files
+            )
+            print("Save successful!")
+
+        except Exception as e:
+            print("Save to hugging face failed")
+
+        # save locally
         torch.save(snapshot, "snapshot.pt")
 
 
@@ -269,15 +287,9 @@ class Linear(Q_Learning):
             print("Attempted to load snapshot which does not exist - skipping")
             return
 
-        snapshot = torch.load("snapshot.pt", map_location='cpu', weights_only=False)
+        snapshot = torch.load("snapshot.pt", map_location='cpu')
 
         self.t = snapshot["timestep"]
-        self.num_episodes = snapshot["num_episodes"]
-        self.total_reward_so_far = snapshot["total_reward_so_far"]
-
-        self.replay_buffer.replay_buffer = snapshot["replay_buffer_list"]
-        self.replay_buffer.next_replay_location = snapshot["replay_buffer_next_replay_location"]
-        self.replay_buffer.num_elements = snapshot["replay_buffer_num_elements"]
 
         self.approx_network.load_state_dict(snapshot["approx_network_state_dict"])
         self.target_network.load_state_dict(snapshot["target_network_state_dict"])

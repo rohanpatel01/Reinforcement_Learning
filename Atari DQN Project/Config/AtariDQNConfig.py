@@ -22,7 +22,7 @@ class AtariDQNConfig:
         self.soft_epsilon = 0.05
 
         # nature paper hyper params
-        self.nsteps_train = 5_000_000
+        self.nsteps_train = 50_000_000      # training for much longer (50 million timesteps)
         self.minibatch_size = 32
         self.replay_buffer_size = 1_000_000
         self.target_weight_update_freq = 10_000
@@ -34,7 +34,7 @@ class AtariDQNConfig:
         self.lr_end = 0.00005
         self.lr_n_steps = self.nsteps_train / 2
         self.begin_epsilon = 1
-        self.end_epsilon = 0.2
+        self.end_epsilon = 0.1
         self.max_time_steps_update_epsilon = 5_000_000
         self.learning_start = 50000
 

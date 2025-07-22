@@ -75,7 +75,7 @@ class Q_Learning:
         pass
 
 
-    def train(self):
+    def train(self, start_t):
 
         epsilon_scheduler = EpsilonScheduler(self.config.begin_epsilon, self.config.end_epsilon,
                                              self.config.max_time_steps_update_epsilon)
@@ -113,7 +113,7 @@ class Q_Learning:
 
                 state = next_state
 
-                if (self.t > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
+                if ( (self.t - start_t) > self.config.learning_start) and (self.t % self.config.learning_freq == 0):
                     self.train_on_minibatch(self.replay_buffer.sample_minibatch(), self.t)
 
                 # Measures Max_Q per timestep and evaluates agent when time comes

@@ -20,6 +20,9 @@ from ReplayBuffer import ReplayBuffer
 from datetime import datetime
 import os
 
+import getpass
+from huggingface_hub import HfApi
+
 from Linear import ReducedActionSet
 
 # Note: You can access the environment underneath the first wrapper by using the gymnasium.Wrapper.env attribute.
@@ -32,6 +35,7 @@ from gymnasium.wrappers import (
     FrameStackObservation,
     RecordVideo
 )
+
 
 
 
@@ -56,17 +60,27 @@ class DQN(Linear):
 
     def save_snapshop(self, timestep, num_episodes, total_reward_so_far, replay_buffer):
         snapshot = {
-            "timestep" : self.t,
-            "num_episodes" : num_episodes,
-            "total_reward_so_far" : total_reward_so_far,
-            "replay_buffer_list" : replay_buffer.replay_buffer,
-            "replay_buffer_next_replay_location" : replay_buffer.next_replay_location,
-            "replay_buffer_num_elements" : replay_buffer.num_elements,
-            "approx_network_state_dict" : self.approx_network.state_dict(),
-            "target_network_state_dict" : self.target_network.state_dict()
+            "timestep": self.t,
+            "approx_network_state_dict": self.approx_network.state_dict(),
+            "target_network_state_dict": self.target_network.state_dict()
         }
 
+        # save locally
         torch.save(snapshot, "snapshot.pt")
+
+        # save on hugging face
+        try:
+            api.upload_file(
+                path_or_fileobj="snapshot.pt",
+                path_in_repo="snapshot.pt",
+                repo_id="rohanpatel01/Atari_DQN",
+            )
+            print("Save successful!")
+
+        except Exception as e:
+            print("Save to hugging face failed")
+            print(e)
+
 
 
     def load_snapshot(self):
@@ -75,16 +89,9 @@ class DQN(Linear):
             print("Attempted to load snapshot which does not exist - skipping")
             return
 
-        snapshot = torch.load("snapshot.pt")
+        snapshot = torch.load("snapshot.pt", map_location='cpu')
 
         self.t = snapshot["timestep"]
-        self.num_episodes = snapshot["num_episodes"]
-        self.total_reward_so_far = snapshot["total_reward_so_far"]
-
-        self.replay_buffer.replay_buffer = snapshot["replay_buffer_list"]
-        self.replay_buffer.next_replay_location = snapshot["replay_buffer_next_replay_location"]
-        self.replay_buffer.num_elements = snapshot["replay_buffer_num_elements"]
-
         self.approx_network.load_state_dict(snapshot["approx_network_state_dict"])
         self.target_network.load_state_dict(snapshot["target_network_state_dict"])
 
@@ -216,9 +223,10 @@ def main():
 
         model = DQN(env, config, device)
         # model = Linear(env, config, device) # first test atari env with Linear model since train time for that is just 1 hour and we can confirm that it doesn't learn well. So hopefully things are "working" there
-        # model.load_snapshot() # just right now I don't want to load the snapshot
+        model.load_snapshot() # just right now I don't want to load the snapshot
         # start_time = time.time()
-        model.train()
+        start_t = model.t
+        model.train(start_t)
         # end_time = time.time()
 
         writer.flush()
@@ -241,6 +249,9 @@ def main():
 
 
 if __name__ == '__main__':
+
+    token = getpass.getpass("Enter your Hugging Face token: ")
+    api = HfApi(token=token)
 
     main()
 
