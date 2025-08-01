@@ -72,7 +72,7 @@ class Linear(Q_Learning):
 
     def sample_action(self, env, state, epsilon, time, network_name):
 
-        if  (time < self.config.learning_delay )or  (np.random.rand() < epsilon):
+        if  np.random.rand() < epsilon:  # (time < self.config.learning_delay )or
             # take random action
             return np.random.randint(env.action_space.n)  # numActions        action_space.n
         else:

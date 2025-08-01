@@ -72,7 +72,7 @@ class DQN(Linear):
         try:
             api.upload_file(
                 path_or_fileobj="snapshot.pt",
-                path_in_repo="snapshot.pt",
+                path_in_repo="/start_from_7M_snap/snapshot.pt",
                 repo_id="rohanpatel01/Atari_DQN",
             )
             print("Save successful!")
